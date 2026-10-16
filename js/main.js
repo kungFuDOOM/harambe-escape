@@ -335,7 +335,7 @@ function drawWorld() {
   const sx = G.shake ? (Math.random() - 0.5) * G.shake * 2 : 0, sy = G.shake ? (Math.random() - 0.5) * G.shake : 0;
   ctx.save(); ctx.translate(Math.round(sx), Math.round(sy));
   const cam = Math.round(G.cam), camP = Math.round(G.cam * 3) / 3; // the world scrolls in whole px; the hero uses a device-px camera so he doesn't wobble +-0.5px against the scroll
-  drawBG(ctx, STAGES[G.stage].bg, cam, G.t);
+  drawBG(ctx, STAGES[G.stage].bg, cam, G.t, G.stage);
   const list = [];
   for (const pr of G.props) list.push({ y: pr.y, f: () => { shadow(ctx, pr.x - cam, pr.y, 18); drawProp(ctx, { ...pr, x: pr.x - cam }); } });
   for (const r of G.rubble || []) list.push({ y: r.y - 1, f: () => drawRubble(ctx, { ...r, x: r.x - cam }) });
