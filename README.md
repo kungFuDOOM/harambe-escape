@@ -46,4 +46,13 @@ python3 tools/ai-art/build_bg.py /path/to/art-src        # bg-*.jpg -> assets/bg
 ```
 The slicer keys out the magenta (hue based, so the darker ground shadows go too, with JPEG-fringe cleanup and despill), finds each sprite by connected components, flips the left-facing enemy sheets so everything faces right, scales every character to a common standing height, and anchors every frame at its feet so animations don't jitter. The game draws on a 960x540 canvas (a 3x scale of the 320x180 logic grid) so the art is shown at native resolution. Backgrounds tile mirrored along the stage; the zoo and base have a slower sky layer and the jungle a faster foreground strip for slight parallax. Each boss has an 8-frame strip (idle, 3 walk frames, wind-up, strike, hurt, defeated; the Police Captain and FBI agent strips have 7 and reuse a walk frame as the wind-up); frames a strip lacks fall back to the older `bosses.jpg` frames. The kid, crates, barrels, bananas, banana bunch, heart and haystack are AI art too (`props_ai`). The small remaining procedural bits (hit sparks, dust, net, the pixel font) are built by `python3 tools/art/build_all.py`.
 
+## Trailer
+`tools/trailer/` records a gameplay trailer straight from the game: headless Chromium on a virtual clock (frame-perfect 30 fps), a small bot that plays each stage and boss, title cards drawn with the game's font and sprites, and a soundtrack rendered offline with the game's own synth (music plus every in-game sound effect, kept in sync with the cuts).
+
+```bash
+node tools/trailer/capture.mjs /tmp/trailer-raw            # raw footage + sfx logs (needs playwright + ffmpeg)
+node tools/trailer/capture.mjs /tmp/trailer-raw card:zoo:1.8 card:end:6 ...   # title cards (see tools/trailer/cards.js)
+node tools/trailer/build.mjs /tmp/trailer-raw harambe-trailer.mp4             # cut list, soundtrack, 1080p encode
+```
+
 By kungFuDOOM.
