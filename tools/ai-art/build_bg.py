@@ -52,7 +52,7 @@ EXTRA = {
     'jungle-waterfall': ('jungle', 0.82),  'jungle-canopy':    ('jungle', 0.78),
 }
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
-ZONE = 90         # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
+ZONE = 120        # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
 HAZE_ROWS = 45    # per-row haze colour samples stored in bg.json (runtime fades the neighbouring plate into the same haze)
 # Mean floor luminance (0-255) each plate's walk band is lifted to, so heroes/enemies read against it (stage floors sit at ~25-110).
 FLOOR_LUM = {'zoo-lion': 66, 'zoo-reptile': 72, 'city-stores': 30, 'city-bridge': 34, 'fbi-server': 96, 'fbi-archive': 114,
@@ -79,10 +79,13 @@ for name, (stage, F) in EXTRA.items():
     a = np.concatenate([np.array(top), np.array(bot)], 0)
     a = lift_floor(a, lane_top * 3, min(H, lane_bot * 3 + 10), FLOOR_LUM[name])
     # per-row haze colour of each side (edge columns, vertically blurred), then ramp the plate edge out of it (tone-matched fade)
-    k = np.ones(15) / 15; hz = {}
+    KB = 81; k = np.ones(KB) / KB; hz = {}; meta_stage = stage
     for side, cols in (('l', a[:, :12]), ('r', a[:, -12:])):
-        c = cols.astype(np.float32).mean(1); c = np.stack([np.convolve(np.pad(c[:, j], 7, mode='edge'), k, 'valid') for j in range(3)], 1)
-        hz[side] = c
+        c = cols.astype(np.float32).mean(1); c = np.stack([np.convolve(np.pad(c[:, j], KB // 2, mode="edge"), k, 'valid') for j in range(3)], 1)
+        # tonal match: pull toward the stage's own plate row colours (what the neighbouring screens actually show), so no dark patch over sky
+        st = np.array(Image.open(f'{OUT}/{meta_stage}.webp').convert('RGB').resize((W, H)), dtype=np.float32).mean(1)
+        st = np.stack([np.convolve(np.pad(st[:, j], KB // 2, mode='edge'), k, 'valid') for j in range(3)], 1)
+        hz[side] = 0.3 * c + 0.7 * st
     t = np.clip(np.arange(W) / ZONE, 0, 1); t = np.minimum(t, t[::-1]); sm = (t * t * (3 - 2 * t))[None, :, None]
     left = hz['l'][:, None, :]; right = hz['r'][:, None, :]; sidew = (np.arange(W) < W / 2)[None, :, None]
     haze = np.where(sidew, left, right)

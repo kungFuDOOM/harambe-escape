@@ -34,7 +34,7 @@ function plate(ctx, im, kind, cam) {
 /** Haze strip that the neighbouring (old) plate fades into just outside an AI plate's edge: the plate's own per-row edge colour,
  * alpha ramping 0 -> HAZE_A towards the edge. The plate itself ramps out of the same colour (baked in), so a slide goes
  * old plate -> haze -> new plate with no two scenes overlapping (no ghosting). */
-const HZ = 30, HAZE_A = 0.94, hazeCache = {};
+const HZ = 30, HAZE_A = 0.85, hazeCache = {};
 function hazeStrip(kind, name, side) {
   const key = kind + name + side; if (hazeCache[key]) return hazeCache[key];
   const rows = A.bgMeta[kind].haze[name][side], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;

@@ -23,8 +23,8 @@ export const SCREENS = {
   zoo: {
     tiles: [0, 1, 2, 3, 0, 1, 2, 3],
     screens: [
-      { name: 'Entrance Plaza', top: ID, bot: ID, lm: [['sign', 120, 'WELCOME', '#2a6a3a', '#ffe9a0'], ['bush', 30, 26, '#1e4a28'], ['bush', 270, 30, '#235a2c'], ['stand', 214, '#c8321e', '#f2e6c8', 'TICKETS']], lights: [] },
-      { name: 'Food Court', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['stand', 40, '#e0a020', '#fff2d0', 'FOOD'], ['stand', 150, '#c8321e', '#f2e6c8', 'DRINKS'], ['bench', 250], ['lights', 20, 300, 66]], lights: [[60, 62, 26, [255, 190, 90], 1], [170, 62, 26, [255, 190, 90], 1]] },
+      { name: 'Entrance Plaza', top: ID, bot: ID, lm: [['hsign', 120, 'WELCOME', '#2a6a3a', '#ffe9a0'], ['bush', 30, 26, '#1e4a28'], ['bush', 270, 30, '#235a2c']], lights: [] },
+      { name: 'Food Court', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['stand', 20, '#e0a020', '#fff2d0', 'FOOD'], ['stand', 150, '#c8321e', '#f2e6c8', 'DRINKS'], ['bench', 250]], lights: [[60, 62, 26, [255, 190, 90], 1], [170, 62, 26, [255, 190, 90], 1]] },
       { name: 'Lion House', plate: 'zoo-lion', top: rgb(228, 196, 232), bot: rgb(238, 224, 236), lm: [['bench', 236]], lights: [], },
       { name: 'Primate World', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [['tree', 40, 70], ['tree', 280, 78], ['sign', 150, 'PRIMATE WORLD', '#2a5a30', '#d8ffb0'], ['bush', 220, 22, '#1a4a30']], lights: [] },
       { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['bush', 26, 26, '#142e24'], ['bush', 296, 24, '#142e24']], lights: [] },
