@@ -75,7 +75,7 @@ EXTRA = {
     'jungle-clearing': ('jungle', 0.61),
 }
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
-ZONE = 120        # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
+ZONE = 6          # device px (2 logic px): plates now hard-cut at the screen boundary; only a hairline edge anti-alias
 HAZE_ROWS = 45    # per-row haze colour samples stored in bg.json (runtime fades the neighbouring plate into the same haze)
 # Mean floor luminance (0-255) each plate's walk band is lifted to, so heroes/enemies read against it (stage floors sit at ~25-110).
 FLOOR_LUM = {'zoo-lion': 66, 'zoo-reptile': 72, 'city-stores': 30, 'city-bridge': 34, 'fbi-server': 96, 'fbi-archive': 114,
