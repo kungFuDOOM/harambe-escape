@@ -49,9 +49,9 @@ for (const kind of Object.keys(SCREENS)) {
     const s = SCREENS[kind].screens; for (let i = 1; i < s.length; i++) if (s[i].plate) assert.ok(s[i].plate !== s[i - 1].plate);
   });
 }
-test('AI plate assets total under 1.5 MB', () => {
+test('AI plate assets total under 2 MB', () => {
   let n = 0; for (const f of fs.readdirSync(new URL('../assets/bg/', import.meta.url))) if (f.startsWith('x_')) n += fs.statSync(new URL(`../assets/bg/${f}`, import.meta.url)).size;
-  assert.ok(n < 1.5 * 1024 * 1024, n);
+  assert.ok(n < 2 * 1024 * 1024, n);
 });
 
 test('every AI plate has per-row haze colours for both edges (tone-matched fade, no crossfade ghosting) and sane floor lift', () => {

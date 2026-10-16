@@ -57,6 +57,22 @@ EXTRA = {
     'fbi-elevators':    ('office', 0.67),  'fbi-director':     ('office', 0.67),
     'base-gate':        ('base',   0.65),  'base-motorpool':   ('base',   0.66), 'base-bunkers':     ('base',   0.72),
     'jungle-treeline':  ('jungle', 0.73),  'jungle-thicket':   ('jungle', 0.76),
+    # repeat-fix plates (15)
+    'zoo-primate': ('zoo', 0.68),
+    'zoo-exit': ('zoo', 0.67),
+    'city-diner': ('street', 0.7),
+    'city-barricade': ('street', 0.7),
+    'fbi-records': ('office', 0.66),
+    'fbi-conference': ('office', 0.66),
+    'base-barracks': ('base', 0.67),
+    'base-fuel': ('base', 0.7),
+    'base-wire': ('base', 0.68),
+    'base-hq': ('base', 0.72),
+    'jungle-ford': ('jungle', 0.78),
+    'jungle-ruins': ('jungle', 0.7),
+    'jungle-cave': ('jungle', 0.68),
+    'jungle-temple': ('jungle', 0.72),
+    'jungle-clearing': ('jungle', 0.61),
 }
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
 ZONE = 120        # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
@@ -66,7 +82,9 @@ FLOOR_LUM = {'zoo-lion': 66, 'zoo-reptile': 72, 'city-stores': 30, 'city-bridge'
              'base-airfield': 84, 'jungle-waterfall': 66, 'jungle-canopy': 78,
              'zoo-plaza': 70, 'zoo-foodcourt': 70, 'city-alley': 30, 'city-plaza': 34, 'city-underbridge': 34,
              'fbi-lobby': 100, 'fbi-cubicles': 100, 'fbi-elevators': 90, 'fbi-director': 80,
-             'base-gate': 84, 'base-motorpool': 84, 'base-bunkers': 70, 'jungle-treeline': 70, 'jungle-thicket': 60}
+             'base-gate': 84, 'base-motorpool': 84, 'base-bunkers': 70, 'jungle-treeline': 70, 'jungle-thicket': 60,
+             # repeat-fix plates
+             'zoo-primate': 70, 'zoo-exit': 70, 'city-diner': 34, 'city-barricade': 34, 'fbi-records': 100, 'fbi-conference': 100, 'base-barracks': 84, 'base-fuel': 72, 'base-wire': 72, 'base-hq': 70, 'jungle-ford': 66, 'jungle-ruins': 66, 'jungle-cave': 64, 'jungle-temple': 66, 'jungle-clearing': 66}
 LUMW = np.array([0.2126, 0.7152, 0.0722])
 def lift_floor(a, y0, y1, target):
     """Raise shadows of rows y0.. with a power curve (keeps hue) until the band's mean luminance reaches target; soft ramp at the top."""
