@@ -36,3 +36,20 @@ for (const st of STAGES) {
   test(`${kind}: landmarks sit inside their own screen`, () => { for (const s of S.screens) for (const l of s.lm) assert.ok(typeof l[1] === 'number' && l[1] >= -20 && l[1] <= 320); });
 }
 test('screenPos clamps at both ends', () => { const s = [0, 100, 300]; assert.deepEqual(screenPos(s, -5), { i: 0, j: 0, t: 0 }); assert.equal(screenPos(s, 999).i, 2); });
+
+import fs from 'node:fs';
+const META = JSON.parse(fs.readFileSync(new URL('../assets/bg/bg.json', import.meta.url)));
+for (const kind of Object.keys(SCREENS)) {
+  test(`${kind}: AI plates referenced by screens exist, are listed in bg.json and stay small`, () => {
+    const used = SCREENS[kind].screens.filter(s => s.plate).map(s => s.plate);
+    assert.deepEqual([...used].sort(), [...(META[kind].extra || [])].sort());
+    for (const p of used) assert.ok(fs.statSync(new URL(`../assets/bg/x_${p}.webp`, import.meta.url)).size < 150 * 1024, p);
+  });
+  test(`${kind}: neighbouring screens never both carry the same AI plate`, () => {
+    const s = SCREENS[kind].screens; for (let i = 1; i < s.length; i++) if (s[i].plate) assert.notEqual(s[i].plate, s[i - 1].plate);
+  });
+}
+test('AI plate assets total under 1.5 MB', () => {
+  let n = 0; for (const f of fs.readdirSync(new URL('../assets/bg/', import.meta.url))) if (f.startsWith('x_')) n += fs.statSync(new URL(`../assets/bg/${f}`, import.meta.url)).size;
+  assert.ok(n < 1.5 * 1024 * 1024, n);
+});

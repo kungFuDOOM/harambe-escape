@@ -17,6 +17,7 @@ export async function loadAssets() {
     A.bg[k] = {};
     jobs.push(img(`assets/bg/${k}.webp`).then(i => A.bg[k].main = i));
     if (m.sky) jobs.push(img(`assets/bg/${k}_sky.webp`).then(i => A.bg[k].sky = i));
+    for (const x of m.extra || []) jobs.push(img(`assets/bg/x_${x}.webp`).then(i => (A.bg[k].x = A.bg[k].x || {})[x] = i));
     if (m.fg) jobs.push(img(`assets/bg/${k}_fg.webp`).then(i => A.bg[k].fg = i));
   }
   await Promise.all(jobs); A.ready = true;

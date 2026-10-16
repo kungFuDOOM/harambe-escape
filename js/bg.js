@@ -31,6 +31,12 @@ function plate(ctx, im, kind, cam) {
     });
   }
 }
+/** AI-painted plate for a landmark screen: drawn over the stage plate at its camera stop, soft-faded at both edges (baked alpha). */
+function featured(ctx, L, kind, stops, cam) {
+  if (!L.x) return;
+  const scr = SCREENS[kind].screens;
+  for (let i = 0; i < stops.length; i++) { const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W || x + TILE_W < 0) continue; ctx.drawImage(L.x[p], Math.round(x * S) / S, 0, TILE_W, 180); }
+}
 const stopsCache = new WeakMap();
 const stopsFor = st => stopsCache.get(st) || (stopsCache.set(st, stopsOf(st)), stopsCache.get(st));
 
@@ -41,6 +47,7 @@ export function drawBG(ctx, kind, cam, t, stage) {
   if (!st || !SCREENS[kind]) { tile(ctx, L.main, cam * S, 0); if (L.fg) tile(ctx, L.fg, cam * S * m.fg.speed, m.fg.y); return; }
   const stops = stopsFor(st), look = lookAt(kind, stops, cam);
   plate(ctx, L.main, kind, cam);
+  featured(ctx, L, kind, stops, cam);
   drawLandmarks(ctx, kind, stops, cam);
   if (L.fg) tile(ctx, L.fg, cam * S * m.fg.speed, m.fg.y);
   drawGrade(ctx, kind, stops, cam, t, look);

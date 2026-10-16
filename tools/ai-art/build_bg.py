@@ -39,4 +39,32 @@ for name, p in PLATES.items():
     Image.fromarray(main).save(f'{OUT}/{name}.webp', quality=90, alpha_quality=100)
     meta[name] = info
     print(name, os.path.getsize(f'{OUT}/{name}.webp') // 1024, 'KB')
+
+# ---- extra per-screen plates (AI-painted landmark screens, js/bgscreens.js `plate:`) ----
+# name -> (stage layer, src file in SRC/bgx, floor-top fraction of the source plate).
+# The source is remapped vertically (piecewise-linear) so its floor top lands just above the stage's lane top, which keeps the
+# walk band identical to the stage plate; the left/right FEATHER_X columns fade to transparent so it blends into the neighbouring screen.
+EXTRA = {
+    'zoo-lion':         ('zoo',    0.785), 'zoo-reptile':      ('zoo',    0.765),
+    'city-stores':      ('street', 0.675), 'city-bridge':      ('street', 0.62),
+    'fbi-server':       ('office', 0.625), 'fbi-archive':      ('office', 0.685),
+    'base-airfield':    ('base',   0.765),
+    'jungle-waterfall': ('jungle', 0.82),  'jungle-canopy':    ('jungle', 0.78),
+}
+FEATHER_X = 168   # device px (56 logic px) soft edge each side
+FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
+total = 0
+for name, (stage, F) in EXTRA.items():
+    src = Image.open(f'{SRC}/bgx/{name}.jpg').convert('RGB')
+    sh = src.height; lane_top = meta[stage]['lane'][0]
+    T = (lane_top - FLOOR_LIFT) * 3  # target floor-top row in the 540px output
+    fy = int(round(F * sh)); top = src.crop((0, 0, src.width, fy)).resize((W, T), Image.LANCZOS)
+    bot = src.crop((0, fy, src.width, sh)).resize((W, H - T), Image.LANCZOS)
+    a = np.concatenate([np.array(top), np.array(bot)], 0)
+    t = np.clip(np.arange(W) / FEATHER_X, 0, 1); t = np.minimum(t, t[::-1]); al = (t * t * (3 - 2 * t) * 255).astype(np.uint8)
+    rgba = np.dstack([a, np.tile(al, (H, 1))])
+    f = f'{OUT}/x_{name}.webp'; Image.fromarray(rgba).save(f, quality=72, alpha_quality=80, method=6)
+    meta[stage].setdefault('extra', []).append(name); total += os.path.getsize(f)
+    print(name, os.path.getsize(f) // 1024, 'KB')
+print('extras total', total // 1024, 'KB')
 json.dump(meta, open(f'{OUT}/bg.json', 'w'))
