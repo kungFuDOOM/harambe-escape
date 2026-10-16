@@ -12,9 +12,16 @@ let g; // current layer ctx (scaled S)
 const R = (x, y, w, h, c) => { g.fillStyle = c; const X = q(x), Y = q(y); g.fillRect(X, Y, q(x + w) - X, q(y + h) - Y); };
 const box = (x, y, w, h, c, edge = '#10121a') => { R(x - 1, y - 1, w + 2, h + 2, edge); R(x, y, w, h, c); R(x, y, w, 1, sh(c, 1.25)); R(x, y + h - 1, w, 1, sh(c, 0.7)); };
 const blob = (x, y, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(q(x), q(y), rx, ry, 0, 0, 7); g.fill(); };
+/** Smooth neon lettering (canvas font, not the 6px bitmap font scaled up): glow pass + bright core. */
+function neon(t, x, y, px, core, glow) { g.save(); g.font = `900 ${px}px Impact, "Arial Black", "Helvetica Neue", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  g.shadowColor = glow; g.shadowBlur = 5; g.lineWidth = 2.2; g.strokeStyle = glow; g.strokeText(t, x, y); g.shadowBlur = 0; g.fillStyle = core; g.fillText(t, x, y); g.restore(); }
 const text = (t, x, y, col) => drawText(g, t, x, y, col, 8, 'center', '#000');
 
 const LM = {
+  /** Lettering on a painted sign board of the plate (x = centre from the screen's left edge, y = text centre; crisp canvas text, no bitmap font). */
+  ptext(x, gy, y, t, kind) { if (kind === 'neon') { neon(t, x, y + 3.6, 10.5, '#ffc0c0', '#ff3a4a'); return; }
+    g.save(); g.font = '700 8px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.letterSpacing = '1.5px';
+    g.fillStyle = 'rgba(8,10,16,0.75)'; g.fillText(t, x + 0.4, y + 3.4); g.fillStyle = 'rgba(214,206,170,0.92)'; g.fillText(t, x, y + 2.8); g.restore(); },
   sign(x, gy, t, bg, fg) { const w = t.length * 6 + 10; R(x - w / 2 + 3, gy - 14, 2, 14, '#2a2418'); R(x + w / 2 - 5, gy - 14, 2, 14, '#2a2418'); box(x - w / 2, gy - 30, w, 16, bg); R(x - w / 2 + 2, gy - 28, w - 4, 1, sh(fg, 0.55)); text(t, x, gy - 16, fg); },
   hsign(x, gy, t, bg, fg) { const w = t.length * 6 + 12, y = gy - 50; R(x - w / 2, y - 8, w, 2, '#1a1a20'); R(x - w / 2 + 4, y - 6, 1, 6, '#6a6a72'); R(x + w / 2 - 5, y - 6, 1, 6, '#6a6a72'); box(x - w / 2, y, w, 16, bg); R(x - w / 2 + 2, y + 2, w - 4, 1, sh(fg, 0.55)); text(t, x, y + 14, fg); },
   bush(x, gy, w, c) { for (let i = 0; i < 4; i++) blob(x + (i - 1.5) * w / 4, gy - 5 - (i % 2) * 3, w / 3.2, 8, '#0c1a10'); for (let i = 0; i < 4; i++) { blob(x + (i - 1.5) * w / 4, gy - 6 - (i % 2) * 3, w / 3.4, 7, c); blob(x + (i - 1.5) * w / 4 - 2, gy - 9 - (i % 2) * 3, w / 7, 3, sh(c, 1.5)); } },
@@ -70,12 +77,79 @@ const LM = {
 };
 function sandbagsRow(x, gy) { for (let i = 0; i < 8; i++) blob(x + 12 + i * 14, gy - 4, 8, 4.5, '#7a6a48'); }
 
+
+// ---- painted sprites (assets/props/*.webp, A.sp): same positions/ground anchoring as the old code drawing; missing sprite => old drawing ----
+const tints = new Map();
+function tinted(name, col, face) { // multiply-tint the whole sprite, or only its face rect, cached per name+colour
+  const k = name + col + (face ? 'f' : ''); let c = tints.get(k); if (c) return c; const s = A.sp[name], [sx, sy, w, h] = s.r;
+  c = document.createElement('canvas'); c.width = w; c.height = h; const t = c.getContext('2d'); t.drawImage(s.im, sx, sy, w, h, 0, 0, w, h);
+  t.globalCompositeOperation = 'multiply'; t.fillStyle = col; if (face) t.fillRect(face[0], face[1], face[2], face[3]); else t.fillRect(0, 0, w, h);
+  t.globalCompositeOperation = 'destination-in'; t.drawImage(s.im, sx, sy, w, h, 0, 0, w, h); tints.set(k, c); return c;
+}
+/** Blit sprite `name`: mode 'ctr' (x = centre) or 'left' (x = left edge); feet on gy (sunk dy px); `top` fixes the y instead (hanging props). */
+function spr(name, x, gy, o = {}) {
+  const s = A.sp[name]; if (!s) return null; const [sx, sy, w, h] = s.r, lw = w / S * (o.sw || o.sc || 1), lh = h / S * (o.sc || 1);
+  const dx = o.mode === 'left' ? x : x - lw / 2, dy = o.top != null ? o.top : gy + (o.dy == null ? 1 : o.dy) - lh;
+  const src = o.tint ? tinted(name, o.tint, o.face) : s.im, ox = o.tint ? 0 : sx, oy = o.tint ? 0 : sy;
+  g.drawImage(src, ox, oy, w, h, q(dx), q(dy), lw, lh); return { x: dx, y: dy, w: lw, h: lh, s, sc: o.sc || 1 };
+}
+const faceOf = s => s.r.length >= 8 ? [s.r[4], s.r[5], s.r[6], s.r[7]] : null;
+const pick = (x, n) => Math.abs(Math.round(x * 7 + n)) % n;
+const SPRL = ['', 'a', 'b', 'c'];
+const SP = {
+  sign(x, gy, t, bg, fg) { const tw = t.length * 6, nm = tw <= 26 ? 'sign_s' : tw <= 48 ? 'sign_m' : 'sign_l', s0 = A.sp[nm]; if (!s0) return false; const f = faceOf(s0);
+    const sc = Math.max(0.55, Math.min(1, (tw + 12) / (f[2] / S))); // board only as wide as its lettering needs
+    const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f, sc }); const cx = r.x + (f[0] + f[2] / 2) / S * sc, cy = r.y + (f[1] + f[3] / 2) / S * sc; text(t, cx, cy + 3, fg); return true; },
+  hsign(x, gy, t, bg, fg) { const s0 = A.sp.hsign; if (!s0) return false; const f = faceOf(s0), top = gy - 50 - f[1] / S; // board top sits at gate height (gy-50)
+    const r = spr('hsign', x, gy, { top, tint: bg, face: f }); text(t, r.x + (f[0] + f[2] / 2) / S, r.y + (f[1] + f[3] / 2) / S + 3, fg); return true; },
+  bush(x, gy, w, c) { const dark = hx(c).reduce((a, b) => a + b, 0) < 150; return !!spr('bush_' + 'abc'[pick(x, 3)], x, gy, { tint: dark ? '#7d8fa0' : null, dy: 2 }); },
+  tree(x, gy) { return !!spr('tree', x, gy, { dy: 2 }); },
+  stand(x, gy, c1, c2, t) { const r = spr(c1 === '#e0a020' ? 'stand_a' : 'stand_b', x + 20, gy, { dy: 1 }); if (!r) return false; const cx = r.x + r.w / 2; box(cx - t.length * 3 - 3, r.y - 11, t.length * 6 + 6, 10, '#3a2a1a'); text(t, cx, r.y - 3, '#ffe9a0'); return true; },
+  bench(x, gy) { return !!spr('bench', x, gy, { mode: 'left', dy: 1 }); },
+  lamp(x, gy, c) { const r = spr('lamp', x, gy, { dy: 1 }); if (!r) return false; g.globalAlpha = 0.8; blob(x, r.y + 7, 2.6, 3.2, c); g.globalAlpha = 1; return true; },
+  cone(x, gy) { return !!spr('cone', x, gy, { dy: 1 }); },
+  dumpster(x, gy) { return !!spr('dumpster', x, gy, { mode: 'left', dy: 1 }); },
+  hydrant(x, gy) { return !!spr('hydrant', x, gy, { dy: 1 }); },
+  pipe(x, gy) { return !!spr('pipe', x + 2, gy, { dy: 0 }); },
+  planter(x, gy) { return !!spr('planter', x, gy, { mode: 'left', dy: 1 }); },
+  diner(x, gy) { const s0 = A.sp.diner; if (!s0) return false; const f = faceOf(s0), r = spr('diner', x, gy, { mode: 'left', dy: 1 }); const cx = r.x + (f[0] + f[2] / 2) / S, cy = r.y + (f[1] + f[3] / 2) / S;
+    neon('DINER', cx, cy + 5, 17, '#ffb0b0', '#ff3a4a'); return true; },
+  girders(x, gy) { return !!spr('girders', x, gy, { mode: 'left', top: -36 }); },
+  barrier(x, gy) { return !!spr('barrier', x, gy, { mode: 'left', dy: 1 }); },
+  plant(x, gy) { return !!spr('plant', x, gy, { dy: 1 }); },
+  seal(x, gy) { return !!spr('seal', x, gy, { top: 27 }); },
+  cubicle(x, gy) { return !!spr('cubicle_' + 'ab'[pick(x, 2)], x, gy, { mode: 'left', dy: 1 }); },
+  cooler(x, gy) { return !!spr('cooler', x, gy, { dy: 1 }); },
+  door(x, gy, n) { const r = spr('door_' + 'ab'[pick(x, 2)], x + 15, gy, { dy: 1 }); if (!r) return false; const cx = r.x + r.w / 2; box(cx - 11, r.y - 5, 22, 11, '#e8e0c8', '#3a2a1a'); drawText(g, n, cx, r.y + 4, '#2a2018', 8, 'center', null); return true; },
+  glass(x, gy) { const r = spr('glass', x, gy, { mode: 'left', dy: 1 }); return !!r; },
+  table(x, gy) { return !!spr('table', x, gy, { mode: 'left', dy: 1 }); },
+  flag(x, gy) { return !!spr('flag', x + 6, gy, { dy: 1 }); },
+  cart(x, gy) { return !!spr('cart', x, gy, { dy: 1 }); },
+  elevator(x, gy) { const r = spr('elevator', x, gy, { mode: 'left', dy: 1, sw: 0.72 }); if (!r) return false; R(r.x + r.w * 0.5 - 3, r.y + 3, 6, 2, '#ff5a3a'); return true; },
+  curtain(x, gy) { return !!spr('curtain', x + 12, gy, { top: 4, sw: 0.55 }); },
+  gatepost(x, gy) { return !!spr('gatepost', x, gy, { dy: 1 }); },
+  sandbags(x, gy, n) { return !!spr(n >= 4 ? 'sandbags4' : 'sandbags3', x, gy, { mode: 'left', dy: 1 }); },
+  jeep(x, gy) { return !!spr('jeep', x, gy, { mode: 'left', dy: 2 }); },
+  drums(x, gy, n) { if (!A.sp.drum_a) return false; for (let i = 0; i < n; i++) spr(i % 2 ? 'drum_b' : 'drum_a', x + 6 + i * 13, gy, { dy: 1 }); return true; },
+  tent(x, gy) { return !!spr('tent', x + 37, gy, { dy: 2 }); },
+  tank(x, gy) { return !!spr('tank', x, gy, { mode: 'left', dy: 1 }); },
+  wire(x, gy) { return !!spr('wire', x, gy, { mode: 'left', dy: 1 }); },
+  bunker(x, gy) { return !!spr('bunker', x, gy, { mode: 'left', dy: 2 }); },
+  hq(x, gy) { return !!spr('hq', x, gy, { mode: 'left', dy: 1 }); },
+  fern(x, gy) { return !!spr('fern_' + 'abc'[pick(x, 3)], x, gy, { dy: 3 }); },
+  vines(x, gy, n) { if (!A.sp.vine_s) return false; for (let i = 0; i < n / 2 | 0; i++) { const vx = x + i * 11 + (i % 2) * 4; spr('vine_' + 'sml'[(i * 7 + (n | 0)) % 3], vx, gy, { top: 0 }); } return true; },
+  rocks(x, gy) { return !!spr('rock_' + 'ab'[pick(x, 2)], x, gy, { dy: 2 }); },
+  pillar(x, gy, h) { return !!spr(h >= 90 ? 'pillar_t' : 'pillar_s', x, gy, { dy: 2 }); },
+  totem(x, gy) { return !!spr('totem', x, gy, { dy: 1 }); },
+  glowflower(x, gy) { return !!spr('flower_' + 'ab'[Math.floor(x / 20) % 2], x, gy, { dy: 1 }); },
+};
+
 const layers = new Map(); // "kind:i" -> canvas (LRU, max 4)
 function layer(kind, i, x0) {
   const key = kind + ':' + i; let c = layers.get(key); if (c) { layers.delete(key); layers.set(key, c); return c; }
   c = document.createElement('canvas'); c.width = LW * S; c.height = 180 * S; g = c.getContext('2d'); g.scale(S, S); g.translate(PAD, 0); g.imageSmoothingEnabled = false;
   const lane = A.bgMeta[kind].lane, gy = lane[0] + 2;
-  for (const l of SCREENS[kind].screens[i].lm) { const f = LM[l[0]]; if (f) f(l[1], gy, ...l.slice(2)); }
+  for (const l of SCREENS[kind].screens[i].lm) { const a = l.slice(1); if (SP[l[0]] && SP[l[0]](a[0], gy, ...a.slice(1))) continue; const f = LM[l[0]]; if (f) f(a[0], gy, ...a.slice(1)); }
   layers.set(key, c); if (layers.size > 4) layers.delete(layers.keys().next().value);
   return c;
 }

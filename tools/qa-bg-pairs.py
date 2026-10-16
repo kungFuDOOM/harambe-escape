@@ -4,7 +4,7 @@ import asyncio, sys, os, json
 from playwright.async_api import async_playwright
 from PIL import Image
 OUT = sys.argv[1]; URL = sys.argv[2]; os.makedirs(OUT, exist_ok=True)
-FEAT = {0: [2, 4], 1: [2, 4], 2: [4, 5], 3: [4], 4: [4, 6]}
+FEAT = {0: range(6), 1: range(7), 2: range(8), 3: range(8), 4: range(9)}  # edge crossings of every plate
 async def main():
     res = {}
     async with async_playwright() as pw:

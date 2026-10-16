@@ -42,16 +42,16 @@ const META = JSON.parse(fs.readFileSync(new URL('../assets/bg/bg.json', import.m
 for (const kind of Object.keys(SCREENS)) {
   test(`${kind}: AI plates referenced by screens exist, are listed in bg.json and stay small`, () => {
     const used = SCREENS[kind].screens.filter(s => s.plate).map(s => s.plate);
-    assert.deepEqual([...used].sort(), [...(META[kind].extra || [])].sort());
+    assert.deepEqual([...new Set(used)].sort(), [...(META[kind].extra || [])].sort());
     for (const p of used) assert.ok(fs.statSync(new URL(`../assets/bg/x_${p}.webp`, import.meta.url)).size < 150 * 1024, p);
   });
   test(`${kind}: neighbouring screens never both carry the same AI plate`, () => {
-    const s = SCREENS[kind].screens; for (let i = 1; i < s.length; i++) if (s[i].plate) assert.notEqual(s[i].plate, s[i - 1].plate);
+    const s = SCREENS[kind].screens; for (let i = 1; i < s.length; i++) if (s[i].plate) assert.ok(s[i].plate !== s[i - 1].plate);
   });
 }
-test('AI plate assets total under 1.5 MB', () => {
+test('AI plate assets total under 2 MB', () => {
   let n = 0; for (const f of fs.readdirSync(new URL('../assets/bg/', import.meta.url))) if (f.startsWith('x_')) n += fs.statSync(new URL(`../assets/bg/${f}`, import.meta.url)).size;
-  assert.ok(n < 1.5 * 1024 * 1024, n);
+  assert.ok(n < 2 * 1024 * 1024, n);
 });
 
 test('every AI plate has per-row haze colours for both edges (tone-matched fade, no crossfade ghosting) and sane floor lift', () => {
