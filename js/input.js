@@ -2,7 +2,7 @@
 const down = {}, pressed = {};
 const MAP = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down',
   j: 'atk', J: 'atk', z: 'atk', Z: 'atk', k: 'heavy', K: 'heavy', x: 'heavy', X: 'heavy', ' ': 'jump', c: 'jump', C: 'jump', l: 'special', L: 'special', v: 'special', V: 'special',
-  Enter: 'start', p: 'start', P: 'start', m: 'mute', M: 'mute', Escape: 'start' };
+  Tab: 'skip', Enter: 'start', p: 'start', P: 'start', m: 'mute', M: 'mute', Escape: 'start' };
 function set(k, v) { if (v && !down[k]) pressed[k] = true; down[k] = v; }
 addEventListener('keydown', e => { const k = MAP[e.key]; if (k) { set(k, true); e.preventDefault(); } });
 addEventListener('keyup', e => { const k = MAP[e.key]; if (k) set(k, false); });
@@ -28,6 +28,7 @@ if (zone) {
     if (stickId !== null) return;
     stickId = e.pointerId; zone.setPointerCapture(e.pointerId); sc = { x: e.clientX, y: e.clientY };
     stick.style.display = 'block'; stick.style.left = sc.x + 'px'; stick.style.top = sc.y + 'px'; knob.style.transform = '';
+    if (document.body.classList.contains('cutscene') && e.clientY < innerHeight * 0.2 && e.clientX > innerWidth * 0.72) { pressed.skip = true; stickId = null; return; } // story: tap SKIP (top right)
     if (!document.body.classList.contains('playing')) pressed.start = true; // menus: tap anywhere
     stickMove(e); e.preventDefault();
   });
