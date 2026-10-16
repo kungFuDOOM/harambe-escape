@@ -1,0 +1,55 @@
+// Cutscenes: comic-style intro (kid is tossed to a soft haystack, totally fine) and the jungle ending.
+import { W, H } from './logic.js';
+import { drawHarambe, drawHuman, drawKid, drawText, shadow } from './sprites.js';
+import { drawBG } from './bg.js';
+import { ENEMIES } from './levels.js';
+import { audio } from './audio.js';
+
+const hay = (ctx, x, y, s = 1) => { ctx.fillStyle = '#d8b84a'; ctx.beginPath(); ctx.moveTo(x - 40 * s, y); ctx.lineTo(x - 24 * s, y - 34 * s); ctx.lineTo(x + 24 * s, y - 34 * s); ctx.lineTo(x + 42 * s, y); ctx.fill(); ctx.fillStyle = '#b8942a'; for (let i = 0; i < 9; i++) ctx.fillRect(x - 30 * s + i * 7 * s, y - 28 * s + (i % 3) * 8 * s, 9 * s, 2); };
+const panel = (ctx, caption) => { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, 14); ctx.fillRect(0, H - 30, W, 30); ctx.fillStyle = '#ffe03a'; ctx.fillRect(0, H - 31, W, 1); const lines = caption.split('\n'); lines.forEach((l, i) => drawText(ctx, l, W / 2, H - 18 + i * 9, '#fff', 8, 'center')); };
+const sfxOnce = {};
+const once = (k, t, now, fn) => { if (now >= t && !sfxOnce[k]) { sfxOnce[k] = 1; fn(); } if (now < 0.05) delete sfxOnce[k]; };
+
+const scenes = [
+  { dur: 4.2, draw(ctx, t) { // kid wanders in
+    drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.fillRect(0, 0, W, H);
+    drawHarambe(ctx, { x: 230, y: 150, face: -1, t, state: 'idle' });
+    const kx = 20 + t * 40; drawKid(ctx, kx, 150 + Math.abs(Math.sin(t * 8)) * -2, 0);
+    if (t > 2.2) { drawText(ctx, '!', 232, 92, '#ff3030', 16, 'center'); drawText(ctx, 'uh oh', kx, 124, '#fff', 7, 'center'); }
+    panel(ctx, 'CINCINNATI ZOO. A CURIOUS KID WANDERS INTO\nTHE GORILLA WORLD EXHIBIT...'); } },
+  { dur: 3.6, draw(ctx, t) { // alt universe — Harambe has a better idea
+    drawBG(ctx, 'zoo', 120, t); hay(ctx, 70, 140, 1.4);
+    drawHarambe(ctx, { x: 230, y: 150, face: -1, t, state: t > 1.8 ? 'heavy' : 'idle', at: Math.min(1, (t - 1.8) / 1.2) * 0.5 });
+    drawKid(ctx, 205, 140 - Math.max(0, 6 - t * 4), 0);
+    drawText(ctx, 'HARAMBE HAS A BETTER IDEA.', W / 2, 40, '#ffe03a', 9, 'center');
+    panel(ctx, 'ALTERNATE UNIVERSE: INSTEAD OF A SAD ENDING,\nHE SPOTS A GIANT HAYSTACK...'); } },
+  { dur: 4.6, draw(ctx, t) { // the toss: safe, soft landing, kid delighted
+    drawBG(ctx, 'zoo', 120, t); hay(ctx, 60, 146, 1.4);
+    drawHarambe(ctx, { x: 235, y: 150, face: -1, t, state: 'idle' });
+    once('toss', 0.3, t, () => audio.sfx('toss')); once('flop', 2.1, t, () => audio.sfx('flop'));
+    if (t < 0.3) drawKid(ctx, 215, 125, 0);
+    else if (t < 2.1) { const k = (t - 0.3) / 1.8, x = 215 - k * 150, y = 120 - Math.sin(k * Math.PI) * 70 + k * 22; drawKid(ctx, x, y, -k * 12); drawText(ctx, 'WHEEEEE!', x, y - 24, '#fff', 8, 'center'); }
+    else { drawKid(ctx, 62, 100 - Math.max(0, 0.4 - (t - 2.1)) * 20, 0); drawText(ctx, '*FLOP*', 62, 78, '#ffe03a', 8, 'center'); if (t > 2.8) drawText(ctx, '"AGAIN!"', 62, 66, '#fff', 8, 'center'); for (let i = 0; i < 6; i++) { ctx.fillStyle = '#e8d070'; ctx.fillRect(40 + i * 8 + Math.sin(t * 6 + i) * 3, 90 - ((t * 20 + i * 9) % 30), 3, 1); } }
+    panel(ctx, t < 2.1 ? '...AND TOSSES THE KID TO SAFETY!' : 'THE KID IS PERFECTLY FINE. HAY EVERYWHERE.\nBEST DAY EVER.'); } },
+  { dur: 4.6, draw(ctx, t) { // chaos, escape
+    drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = (Math.floor(t * 4) % 2) ? 'rgba(255,0,0,.12)' : 'rgba(0,0,255,.12)'; ctx.fillRect(0, 0, W, H);
+    once('siren', 0.1, t, () => audio.sfx('siren'));
+    drawHarambe(ctx, { x: 120, y: 150, face: 1, t, state: 'idle' });
+    for (let i = 0; i < 3; i++) drawHuman(ctx, { x: 330 - Math.min(t * 60, 130) - i * 26, y: 148 + i * 6, face: -1, t: t + i, state: 'walk', pal: (i % 2 ? ENEMIES.guard : ENEMIES.keeper).pal });
+    drawText(ctx, 'THE GORILLA IS LOOSE!!', 250, 70, '#ff5050', 8, 'center');
+    if (t > 2.5) drawText(ctx, '"Time to go home."', 120, 90, '#fff', 8, 'center');
+    panel(ctx, 'ZOOKEEPERS PANIC. SECURITY ARRIVES.\nHARAMBE CRACKS HIS KNUCKLES: THE JUNGLE IS CALLING.'); } },
+];
+const total = scenes.reduce((a, s) => a + s.dur, 0);
+export const INTRO = {
+  total,
+  draw(ctx, t) { let a = 0; for (const s of scenes) { if (t < a + s.dur) { s.draw(ctx, t - a); break; } a += s.dur; } drawText(ctx, 'ENTER: SKIP', W - 6, 10, '#99a', 6, 'right'); if (t < 0.05) for (const k in sfxOnce) delete sfxOnce[k]; },
+};
+
+export function drawOutro(ctx, t, score) {
+  drawBG(ctx, 'jungle', 1700 + t * 20, t);
+  const hx = Math.min(60 + t * 40, 200); drawHarambe(ctx, { x: t < 4 ? hx : 200, y: 150, z: t > 4 ? Math.max(0, (t - 4) * 40) : 0, face: 1, t, state: t < 4 ? 'walk' : 'idle' });
+  if (t > 4.5) { ctx.fillStyle = `rgba(0,0,0,${Math.min(0.75, (t - 4.5) * 0.4)})`; ctx.fillRect(0, 0, W, H); }
+  if (t > 1) drawText(ctx, 'THE JUNGLE. FINALLY.', W / 2, 40, '#ffe03a', 10, 'center');
+  if (t > 5) { drawText(ctx, 'THE END', W / 2, 70, '#fff', 20, 'center'); drawText(ctx, '(the kid is still in the hay. he is fine.)', W / 2, 90, '#8fe0a0', 7, 'center'); drawText(ctx, 'FINAL SCORE ' + score, W / 2, 110, '#8af', 9, 'center'); if (Math.floor(t * 2) % 2) drawText(ctx, 'ENTER: TITLE', W / 2, 140, '#fff', 8, 'center'); }
+}
