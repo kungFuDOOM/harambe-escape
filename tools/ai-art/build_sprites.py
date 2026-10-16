@@ -23,6 +23,10 @@ SHEETS = {
     'cops':    dict(src='enemy-cops.jpg', rows=[8, 8, 8], face='L'),
     'fbi':     dict(src='enemy-fbi.jpg', rows=[6, 6, 7], face='L', split={2: (.3, .75)}),
     'army':    dict(src='enemy-military.jpg', rows=[8, 8, 8], face='L'),
+    # multi-frame boss animation strips (one row each): idle, walk x3, wind-up, strike, hurt, defeated (7-frame strips lack the wind-up)
+    'b1': dict(src='boss1-anim.jpg', rows=[8], face='L', plain=True), 'b2': dict(src='boss2-anim.jpg', rows=[7], face='L'),
+    'b3': dict(src='boss3-anim.jpg', rows=[7], face='L'), 'b4': dict(src='boss4-anim.jpg', rows=[8], face='L'),
+    'b5': dict(src='boss5-anim.jpg', rows=[8], face='L', plain=True, split={0: (.35, .75)}),
     'bosses':  dict(src='bosses.jpg', rows=[5, 5, 5, 5, 5], face='L', bands=[151, 291, 425, 559]),
 }
 H = lambda r, c: (r, c)
@@ -59,15 +63,28 @@ for name, spec in {
 }.items():
     spec['height'] = H_HUMAN; CHARS[name] = spec
 BOSS = lambda row, h, anims, **kw: dict(sheet='bosses', ref=(row, 0), height=h, anims=anims, **kw)
-CHARS.update({
+CHARS.update({  # old single-sheet bosses: kept as the fallback source (see FALLBACK) for any animation a new strip lacks
     'boss_head':    BOSS(0, 226, {'idle': [(0, 0)], 'walk': [(0, 0), (0, 1)], 'windup': [(0, 1)], 'atk': [(0, 2)], 'hurt': [(0, 3)], 'down': [(0, 3), (0, 4), (0, 4)]}),
     'boss_captain': BOSS(1, 226, {'idle': [(1, 0)], 'walk': [(1, 0), (1, 1)], 'windup': [(1, 1)], 'atk': [(1, 2)], 'hurt': [(1, 3)], 'down': [(1, 3), (1, 4), (1, 4)]}),
     'boss_agent':   BOSS(2, 222, {'idle': [(2, 0)], 'walk': [(2, 0), (2, 1)], 'windup': [(2, 1)], 'atk': [(2, 2)], 'hurt': [(2, 3)], 'down': [(2, 3), (2, 4), (2, 4)]}),
     'boss_general': BOSS(3, 214, {'idle': [(3, 0)], 'walk': [(3, 0)], 'windup': [(3, 1), (3, 2)], 'atk': [(3, 3)], 'hurt': [(3, 1)], 'down': [(3, 1), (3, 4), (3, 4)]}),
     'boss_baron':   BOSS(4, 226, {'idle': [(4, 0)], 'walk': [(4, 0), (4, 1)], 'windup': [(4, 1)], 'atk': [(4, 2)], 'hurt': [(4, 1)], 'down': [(4, 1), (4, 4), (4, 4)]}, noflip=[(4, 0)]),
 })
+# new multi-frame strips: boss -> (sheet, row in old sheet, standing height, anims). Frame = (0, col) of the strip.
+STRIP = lambda sh, h, walk, windup, atk, hurt, down: dict(sheet=sh, ref=(0, 0), height=h, anims={'idle': [(0, 0)], 'walk': [(0, c) for c in walk],
+    'windup': [(0, c) for c in windup], 'atk': [(0, c) for c in atk], 'hurt': [(0, c) for c in hurt], 'down': [(0, hurt[0]), (0, down), (0, down)]})
+NEW = {
+    'boss_head':    STRIP('b1', 226, [0, 1, 2, 3], [4], [5], [6], 7),
+    'boss_captain': STRIP('b2', 226, [0, 1, 2, 3], [3], [4], [5], 6),  # 7-frame strip: no separate wind-up, reuses walk frame 3 (baton up behind)
+    'boss_agent':   STRIP('b3', 222, [0, 1, 2], [3], [4], [5], 6),      # 7-frame strip: frame 3 (fist cocked) doubles as wind-up
+    'boss_general': STRIP('b4', 214, [0, 1, 2, 3], [4], [5], [6], 7),
+    'boss_baron':   STRIP('b5', 226, [0, 1, 2, 3], [4], [5], [6], 7),
+}
+FALLBACK = {k: v for k, v in CHARS.items() if k in NEW}  # old bosses.jpg spec per boss
+for k, v in NEW.items():
+    ch = dict(v); ch['fallback'] = FALLBACK[k]; CHARS[k] = ch
 
-def split_to_n(row, n, rng=(.3, .7), rgba=None):
+def split_to_n(row, n, rng=(.3, .7), rgba=None, plain=False):
     """row = list of (bbox, mask) left->right. Split the widest merged sprite at the emptiest column of its
     dark (suit/outline) pixels; pale pixels (swoosh arcs, sparks) left of the cut go to the right-hand sprite."""
     row = list(row)
@@ -75,7 +92,7 @@ def split_to_n(row, n, rng=(.3, .7), rgba=None):
         k = max(range(len(row)), key=lambda i: row[i][0][2] - row[i][0][0])
         (x0, y0, x1, y1), m = row[k]
         luma = rgba[..., :3].astype(float).mean(-1)
-        dark = m & (luma < 100)
+        dark = m if plain else m & (luma < 100)  # plain: cut at the emptiest column of ALL sprite pixels (light-coloured uniforms)
         prof = dark[:, x0:x1].sum(0).astype(float); w = x1 - x0
         lo, hi = int(w * rng[0]), int(w * rng[1])
         cut = x0 + lo + int(np.argmin(np.convolve(prof, np.ones(5) / 5, 'same')[lo:hi]))
@@ -101,7 +118,7 @@ def extract(sheet):
         rows = order_comps(components(fg))
     out = []
     for r, n in zip(rows, sp['rows']):
-        r = split_to_n(r, n, sp.get('split', {}).get(len(out), (.3, .7)), rgba) if len(r) < n else r
+        r = split_to_n(r, n, sp.get('split', {}).get(len(out), (.3, .7)), rgba, sp.get('plain', False)) if len(r) < n else r
         assert len(r) == n, (sheet, [len(x) for x in rows], sp['rows'])
         out.append(r)
     assert len(out) == len(sp['rows'])
@@ -132,6 +149,11 @@ def build():
         sh = ch['sheet']
         if sh not in cache: cache[sh] = extract(sh)
         frames, face = cache[sh]
+        fb = ch.get('fallback'); ch = dict(ch); ch['anims'] = dict(ch['anims'])
+        if fb:  # any animation the new strip lacks is filled from the old bosses.jpg frames (keys ('fb', r, c))
+            if fb['sheet'] not in cache: cache[fb['sheet']] = extract(fb['sheet'])
+            for an, lst in fb['anims'].items():
+                if an not in ch['anims']: ch['anims'][an] = [('fb',) + f for f in lst]
         refimg = frames[ch['ref']]
         # reference height for the scale = standing height of the reference frame
         if 'height' in ch: height = ch['height']
@@ -143,9 +165,13 @@ def build():
                 if f not in used: used.append(f)
         sprites = []
         for f in used:
-            im = frames[f]
-            if face == 'L' and f not in ch.get('noflip', []): im = im.transpose(Image.FLIP_LEFT_RIGHT)
-            nw, nh = max(1, round(im.size[0] * scale)), max(1, round(im.size[1] * scale))
+            if f[0] == 'fb':
+                ff, fface = cache[fb['sheet']]; im = ff[f[1:]]; fsc = fb['height'] / ff[fb['ref']].size[1]
+                flip = fface == 'L' and f[1:] not in fb.get('noflip', []); sc = fsc
+            else:
+                im = frames[f]; flip = face == 'L' and f not in ch.get('noflip', []); sc = scale
+            if flip: im = im.transpose(Image.FLIP_LEFT_RIGHT)
+            nw, nh = max(1, round(im.size[0] * sc)), max(1, round(im.size[1] * sc))
             im = im.resize((nw, nh), Image.LANCZOS)
             al = np.array(im); al[..., 3] = np.where(al[..., 3] > 120, 255, 0); im = Image.fromarray(al)
             ax, ay = anchor_of(im, f in ch.get('bbox_anchor', []))

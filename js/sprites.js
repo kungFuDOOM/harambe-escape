@@ -11,7 +11,20 @@ function blitFrame(ctx, sheetName, anim, i, x, y, face, flash) {
   ctx.save(); ctx.translate(q3(x), q3(y)); if (face < 0) ctx.scale(-1, 1);
   ctx.drawImage(img, f.x, f.y, f.w, f.h, -f.ax / S, -f.ay / S, f.w / S, f.h / S); ctx.restore();
 }
+/** AI-generated prop (props_ai atlas, baked at 3x), anchored bottom-centre. `s` = extra scale, `face` < 0 mirrors. */
+function aiProp(ctx, name, x, y, s = 1, face = 1, white = false) {
+  const r = A.propsAi && A.propsAi[name]; if (!r) return false;
+  const src = white ? aiWhite(name) : A.propsAiImg, sx = white ? 0 : r[0], sy = white ? 0 : r[1];
+  ctx.save(); ctx.translate(q3(x), q3(y)); if (face < 0) ctx.scale(-1, 1);
+  ctx.drawImage(src, sx, sy, r[2], r[3], -r[4] / S * s, -r[5] / S * s, r[2] / S * s, r[3] / S * s); ctx.restore(); return true;
+}
+const aiw = {};
+function aiWhite(name) {
+  if (aiw[name]) return aiw[name]; const r = A.propsAi[name], c = document.createElement('canvas'); c.width = r[2]; c.height = r[3]; const g = c.getContext('2d');
+  g.drawImage(A.propsAiImg, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#fff'; g.fillRect(0, 0, r[2], r[3]); return aiw[name] = c;
+}
 export function spr(ctx, name, x, y, flip = false) { // props atlas item, anchored bottom-centre
+  if (name === 'haystack' && aiProp(ctx, 'haybale', x, y)) return;
   const r = A.props[name]; if (!r) return; ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2) , Math.round(y - r[3]), r[2], r[3]);
 }
 const white = {};
@@ -59,19 +72,26 @@ export function drawHuman(ctx, s) {
   blitFrame(ctx, type, anim, i, x, y - z - bob, face, flash);
 }
 
+/** The kid (AI art). pose: kid_idle / kid_walk0 / kid_walk1 (idle with a hop) / kid_fly (tumbling) / kid_flop, kid_cheer (landed in the hay nest). Anchored at the feet. */
 export function drawKid(ctx, x, y, pose = 'kid_idle', face = 1) {
-  const r = A.props[pose]; if (!r) return;
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (face < 0) ctx.scale(-1, 1);
-  ctx.scale(1.5, 1.5); ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], -22, -40, r[2], r[3]); ctx.restore();
+  const name = pose === 'kid_fly' ? 'kid_fly' : pose === 'kid_flop' || pose === 'kid_cheer' ? 'kid_hay' : 'kid_idle';
+  const hop = pose === 'kid_walk0' ? -1 : pose === 'kid_walk1' ? 1 : 0;
+  if (!aiProp(ctx, name, x, y + hop, 1, face)) { const r = A.props[pose]; if (r) ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2), Math.round(y - r[3]), r[2], r[3]); }
 }
+export function drawRubble(ctx, r) { // broken crate/barrel left behind for a moment, blinking out
+  if (r.t > 1.1 && Math.floor(r.t * 16) % 2) return; aiProp(ctx, r.kind === 'crate' ? 'crate_broken' : 'barrel_broken', r.x, r.y);
+}
+export function drawHeart(ctx, x, y) { aiProp(ctx, 'heart', x, y); }
 
 export function drawProp(ctx, p) {
-  const f = p.flash ? sprWhite : spr; f(ctx, p.kind === 'crate' ? 'crate' : 'barrel', p.x, p.y);
+  const n = p.kind === 'crate' ? 'crate' : 'barrel';
+  if (aiProp(ctx, n, p.x, p.y, 1, 1, !!p.flash)) return;
+  const f = p.flash ? sprWhite : spr; f(ctx, n, p.x, p.y);
 }
 
 export function drawBanana(ctx, x, y, t, big) {
-  const bob = Math.round(Math.sin(t * 6) * 2); shadow(ctx, x, y, 10);
-  spr(ctx, big ? 'banana_big' : 'banana', x, y - 4 + bob);
+  const bob = Math.round(Math.sin(t * 6) * 2); shadow(ctx, x, y, big ? 14 : 11);
+  if (!aiProp(ctx, big ? 'banana_big' : 'banana', x, y - 3 + bob)) spr(ctx, big ? 'banana_big' : 'banana', x, y - 4 + bob);
 }
 /** Comic projectiles: nets, tranquilizer darts, stun bolts, cannon shells. */
 export function drawProj(ctx, n, t = 0) {

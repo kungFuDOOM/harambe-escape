@@ -4,7 +4,7 @@ import { input } from './input.js';
 import { audio } from './audio.js';
 import { drawBG, laneOf } from './bg.js';
 import { loadAssets, A } from './assets.js';
-import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
+import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
 import { INTRO, drawOutro } from './scenes.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -26,7 +26,7 @@ function setMode(m) { G.mode = m; G.mt = 0; }
 
 // ---------- stage setup ----------
 function startStage(i, keepPlayer = true) {
-  const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0;
+  const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0;
   G.props = st.props.map(p => ({ x: p.x, y: G.lane.top + 4 + ((p.x * 7) % Math.max(8, G.lane.bot - G.lane.top - 10)), kind: p.kind, hp: 2, flash: 0 }));
   if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
   audio.play('stage' + i, st.music); setMode('stageintro');
@@ -125,7 +125,7 @@ function deflect(p, reach) { // swings bat comic projectiles out of the air
   const n0 = G.proj.length; G.proj = G.proj.filter(n => !(Math.abs(n.x - (p.x + p.face * reach * 0.6)) < reach * 0.6 + 6 && Math.abs(n.y - p.y) < 16 && n.kind !== 'shell'));
   if (G.proj.length < n0) { popText('DEFLECT!', p.x + p.face * 20, p.y - 60, '#9af0ff', 0.5); audio.sfx('punch'); G.score += 25; } }
 function hitProps(p, reach) { for (const pr of G.props) if (!pr.dead && Math.abs(pr.x - (p.x + p.face * reach)) < 18 && Math.abs(pr.y - p.y) < 14 && !pr.hitBy?.has(p.st > 0 ? p.state + p.n + (p.comboT) : 0)) { pr.hp--; pr.flash = 0.08; G.hitstop = 0.03; audio.sfx('punch'); if (pr.hp <= 0) breakProp(pr); else pr.hp = pr.hp; } }
-function breakProp(pr) { if (pr.dead) return; pr.dead = true; audio.sfx('break'); G.shake = 2; G.score += 30; spark(pr.x, pr.y - 10, true); const r = Math.random(); G.items.push({ x: pr.x, y: pr.y, kind: 'banana', heal: r < 0.25 ? 50 : 20 }); }
+function breakProp(pr) { if (pr.dead) return; pr.dead = true; (G.rubble ||= []).push({ x: pr.x, y: pr.y, kind: pr.kind, t: 0 }); audio.sfx('break'); G.shake = 2; G.score += 30; spark(pr.x, pr.y - 10, true); const r = Math.random(); G.items.push({ x: pr.x, y: pr.y, kind: 'banana', heal: r < 0.25 ? 50 : 20 }); }
 
 // ---------- enemies ----------
 function attackersNow() { return G.ents.filter(e => !e.boss && (e.state === 'windup' || e.state === 'atk')).length; }
@@ -217,6 +217,7 @@ function updatePlaying(dt) {
   for (const n of G.proj) { n.x += n.vx * dt; n.life -= dt; if (Math.abs(n.x - p.x) < 12 && Math.abs(n.y - p.y) < 13 && p.z < 24 && p.state !== 'dead') { n.life = 0; hurtPlayer(n.dmg, n.x - Math.sign(n.vx), n.kind === 'shell'); popText(PROJ_TEXT[n.kind] || 'HIT!', p.x, p.y - 80, '#d8d8a0', 0.6); } }
   G.proj = G.proj.filter(n => n.life > 0 && n.x > G.cam - 20 && n.x < G.cam + W + 20);
   for (const pr of G.props) if (pr.flash > 0) pr.flash -= dt; G.props = G.props.filter(x => !x.dead);
+  for (const r of G.rubble || []) r.t += dt; G.rubble = (G.rubble || []).filter(r => r.t < 1.6);
   // wave clear
   if (G.lock !== null && !G.ents.some(e => e.state !== 'dead')) {
     if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; setMode('stageclear'); return; }
@@ -255,7 +256,7 @@ function drawHUD() {
   drawText(ctx, 'HARAMBE', 34, 14, '#ffe66a', 8);
   drawText(ctx, String(Math.round(G.score)) + ' PTS.', 148, 14, '#ffffff', 8, 'right');
   drawText(ctx, 'LIFE', 34, 25, '#ff9ad8', 8); segBar(60, 19, 22, r, r > 0.3 ? ['#ffd02a', '#fff09a', '#d88a10'] : ['#ff4a4a', '#ffa0a0', '#a01818'], r <= 0.3);
-  drawText(ctx, 'REST', 34, 36, '#ff9ad8', 8); drawText(ctx, String(p.lives), 62, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
+  drawText(ctx, 'REST', 34, 36, '#ff9ad8', 8); drawHeart(ctx, 67, 36); drawText(ctx, 'x' + String(p.lives), 74, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
   // right panel: boss, or the enemy you last hit, else stage info
   const b = G.boss && G.ents.includes(G.boss) ? G.boss : null, le = G.lastHit && G.ents.includes(G.lastHit) && G.lastHit.state !== 'dead' && G.lastHitT > 0 ? G.lastHit : null, tgt = b || le;
   panel(W - 4 - 150, 3, 150, tgt ? 30 : 22);
@@ -270,6 +271,7 @@ function drawWorld() {
   drawBG(ctx, STAGES[G.stage].bg, cam, G.t);
   const list = [];
   for (const pr of G.props) list.push({ y: pr.y, f: () => { shadow(ctx, pr.x - cam, pr.y, 18); drawProp(ctx, { ...pr, x: pr.x - cam }); } });
+  for (const r of G.rubble || []) list.push({ y: r.y - 1, f: () => drawRubble(ctx, { ...r, x: r.x - cam }) });
   for (const it of G.items) list.push({ y: it.y, f: () => drawBanana(ctx, it.x - cam, it.y, G.t, it.heal > 25) });
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
     drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });

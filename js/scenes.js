@@ -14,7 +14,7 @@ const scenes = [
   { dur: 4.2, draw(ctx, t) { // kid wanders in
     drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.fillRect(0, 0, W, H);
     shadow(ctx, 230, 150, 44); drawHarambe(ctx, { x: 230, y: 150, face: -1, t, state: 'idle' });
-    const kx = 20 + t * 40; shadow(ctx, kx, 150, 14); drawKid(ctx, kx, 150 + Math.abs(Math.sin(t * 8)) * -2, Math.floor(t * 5) % 2 ? 'kid_walk0' : 'kid_walk1');
+    const kx = 20 + t * 40; shadow(ctx, kx, 150, 14); drawKid(ctx, kx, 152 + Math.abs(Math.sin(t * 8)) * -2, Math.floor(t * 5) % 2 ? 'kid_walk0' : 'kid_walk1');
     if (t > 2.2) { drawText(ctx, '!', 232, 92, '#ff3030', 16, 'center'); drawText(ctx, 'uh oh', kx, 124, '#fff', 7, 'center'); }
     panel(ctx, 'CINCINNATI ZOO. A CURIOUS KID WANDERS INTO\nTHE GORILLA WORLD EXHIBIT...'); } },
   { dur: 3.6, draw(ctx, t) { // alt universe — Harambe has a better idea
@@ -24,12 +24,12 @@ const scenes = [
     drawText(ctx, 'HARAMBE HAS A BETTER IDEA.', W / 2, 40, '#ffe03a', 9, 'center');
     panel(ctx, 'ALTERNATE UNIVERSE: INSTEAD OF A SAD ENDING,\nHE SPOTS A GIANT HAYSTACK...'); } },
   { dur: 4.6, draw(ctx, t) { // the toss: safe, soft landing, kid delighted
-    drawBG(ctx, 'zoo', 120, t); hay(ctx, 62, 152, 1.1);
+    drawBG(ctx, 'zoo', 120, t); if (t < 2.1) hay(ctx, 62, 152, 1.15);
     shadow(ctx, 235, 150, 44); drawHarambe(ctx, { x: 235, y: 150, face: -1, t, state: t < 0.3 ? 'idle' : 'atk', combo: 2, at: Math.min(1, (t - 0.3) / 0.5) });
     once('toss', 0.3, t, () => audio.sfx('toss')); once('flop', 2.1, t, () => audio.sfx('flop'));
     if (t < 0.3) drawKid(ctx, 215, 150, 'kid_idle', -1);
-    else if (t < 2.1) { const k = (t - 0.3) / 1.8, x = 215 - k * 150, y = 120 - Math.sin(k * Math.PI) * 70 + k * 22; drawKid(ctx, x, y + 40, 'kid_fly', -1); drawText(ctx, 'WHEEEEE!', x, y - 24, '#fff', 8, 'center'); }
-    else { drawKid(ctx, 62, 118 - Math.max(0, 0.4 - (t - 2.1)) * 20, t > 2.8 ? 'kid_cheer' : 'kid_flop', 1); drawText(ctx, '*FLOP*', 62, 78, '#ffe03a', 8, 'center'); if (t > 2.8) drawText(ctx, '"AGAIN!"', 62, 66, '#fff', 8, 'center'); for (let i = 0; i < 6; i++) { ctx.fillStyle = '#e8d070'; ctx.fillRect(40 + i * 8 + Math.sin(t * 6 + i) * 3, 90 - ((t * 20 + i * 9) % 30), 3, 1); } }
+    else if (t < 2.1) { const k = (t - 0.3) / 1.8, x = 215 - k * 150, y = 120 - Math.sin(k * Math.PI) * 70 + k * 22; drawKid(ctx, x, y + 28, 'kid_fly', -1); drawText(ctx, 'WHEEEEE!', x, y - 24, '#fff', 8, 'center'); }
+    else { drawKid(ctx, 62, 152 - Math.max(0, 0.4 - (t - 2.1)) * 40, t > 2.8 ? 'kid_cheer' : 'kid_flop', 1); drawText(ctx, '*FLOP*', 62, 78, '#ffe03a', 8, 'center'); if (t > 2.8) drawText(ctx, '"AGAIN!"', 62, 66, '#fff', 8, 'center'); for (let i = 0; i < 6; i++) { ctx.fillStyle = '#e8d070'; ctx.fillRect(40 + i * 8 + Math.sin(t * 6 + i) * 3, 90 - ((t * 20 + i * 9) % 30), 3, 1); } }
     panel(ctx, t < 2.1 ? '...AND TOSSES THE KID TO SAFETY!' : 'THE KID IS PERFECTLY FINE. HAY EVERYWHERE.\nBEST DAY EVER.'); } },
   { dur: 4.6, draw(ctx, t) { // chaos, escape
     drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = (Math.floor(t * 4) % 2) ? 'rgba(255,0,0,.12)' : 'rgba(0,0,255,.12)'; ctx.fillRect(0, 0, W, H);

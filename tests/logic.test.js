@@ -59,6 +59,15 @@ test('atlas has every character and animation the game uses, and every frame lie
     }
   }
 });
+test('bosses use the multi-frame strips: walk cycle, wind-up, strike, hurt and a defeat sequence of distinct frames', () => {
+  const atlas = JSON.parse(fs.readFileSync(asset('atlas.json')));
+  for (const d of Object.values(BOSSES)) {
+    const m = atlas[d.sheet], a = m.anims;
+    assert.ok(a.walk.length >= 3, d.sheet + ' walk cycle');
+    assert.ok(new Set([...a.walk, ...a.windup, ...a.atk, ...a.hurt, ...a.down]).size >= 7, d.sheet + ' distinct frames');
+    assert.ok(a.down.length >= 3 && a.down[2] !== a.down[0], d.sheet + ' defeat differs from hurt');
+  }
+});
 test('every stage has a background with sky/foreground files and a sane lane', () => {
   const bg = JSON.parse(fs.readFileSync(asset('bg/bg.json')));
   for (const s of STAGES) {
@@ -71,6 +80,12 @@ test('every stage has a background with sky/foreground files and a sane lane', (
   for (const f of ['props.png', 'props.json', 'font.png', 'icon.png']) assert.ok(fs.existsSync(asset(f)), f);
   const props = JSON.parse(fs.readFileSync(asset('props.json')));
   for (const k of ['crate', 'barrel', 'banana', 'net', 'haystack', 'spark0', 'bspark5', 'dust3', 'kid_fly']) assert.ok(props[k], k);
+  const ai = JSON.parse(fs.readFileSync(asset('props_ai.json'))); assert.ok(fs.existsSync(asset('props_ai.png')));
+  const [pw, ph] = pngSize(asset('props_ai.png'));
+  for (const k of ['kid_idle', 'kid_fly', 'kid_hay', 'crate', 'crate_broken', 'barrel', 'barrel_broken', 'banana', 'banana_big', 'heart', 'haybale']) {
+    const r = ai[k]; assert.ok(r, 'AI prop ' + k); const [x, y, w, h, ax, ay] = r;
+    assert.ok(x >= 0 && y >= 0 && x + w <= pw && y + h <= ph && ax > 0 && ax < w && ay === h, k + ' inside sheet, anchored bottom');
+  }
 });
 test('difficulty ramps stage by stage and the roster matches the theme', () => {
   for (let i = 1; i < STAGES.length; i++) {
