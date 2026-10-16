@@ -53,3 +53,12 @@ test('AI plate assets total under 1.5 MB', () => {
   let n = 0; for (const f of fs.readdirSync(new URL('../assets/bg/', import.meta.url))) if (f.startsWith('x_')) n += fs.statSync(new URL(`../assets/bg/${f}`, import.meta.url)).size;
   assert.ok(n < 1.5 * 1024 * 1024, n);
 });
+
+test('every AI plate has per-row haze colours for both edges (tone-matched fade, no crossfade ghosting) and sane floor lift', () => {
+  const meta = JSON.parse(fs.readFileSync(new URL('../assets/bg/bg.json', import.meta.url)));
+  for (const kind of Object.keys(SCREENS)) for (const s of SCREENS[kind].screens) if (s.plate) {
+    const h = meta[kind].haze?.[s.plate]; assert.ok(h && h.l.length >= 16 && h.r.length === h.l.length, s.plate + ' haze');
+    for (const c of [...h.l, ...h.r]) assert.ok(c.length === 3 && c.every(v => v >= 0 && v <= 255), s.plate + ' haze colour');
+  }
+  for (const [kind, n] of [['base', 'Airfield'], ['jungle', 'Dark Canopy']]) assert.ok(SCREENS[kind].screens.find(s => s.name === n).lift > 0.05, n + ' lift');
+});

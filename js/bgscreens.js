@@ -27,7 +27,7 @@ export const SCREENS = {
       { name: 'Food Court', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['stand', 40, '#e0a020', '#fff2d0', 'FOOD'], ['stand', 150, '#c8321e', '#f2e6c8', 'DRINKS'], ['bench', 250], ['lights', 20, 300, 66]], lights: [[60, 62, 26, [255, 190, 90], 1], [170, 62, 26, [255, 190, 90], 1]] },
       { name: 'Lion House', plate: 'zoo-lion', top: rgb(228, 196, 232), bot: rgb(238, 224, 236), lm: [['bench', 236]], lights: [], },
       { name: 'Primate World', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [['tree', 40, 70], ['tree', 280, 78], ['sign', 150, 'PRIMATE WORLD', '#2a5a30', '#d8ffb0'], ['bush', 220, 22, '#1a4a30']], lights: [] },
-      { name: 'Night Path', plate: 'zoo-reptile', top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['bush', 26, 26, '#142e24'], ['bush', 296, 24, '#142e24']], lights: [] },
+      { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['bush', 26, 26, '#142e24'], ['bush', 296, 24, '#142e24']], lights: [] },
       { name: 'Zoo Exit', top: rgb(92, 104, 176), bot: rgb(140, 152, 204), stars: 1, fog: 0.3, warm: [255, 40, 60, 0.04], lm: [['bus', 220], ['sign', 70, 'EXIT', '#7a1a1a', '#ffe6e0'], ['lamp', 20, '#ff9a7a'], ['cone', 150], ['cone', 168]], lights: [[20, 70, 30, [255, 150, 120], 1]], siren: 1 },
     ],
   },
@@ -63,7 +63,7 @@ export const SCREENS = {
       { name: 'Motor Pool', top: rgb(255, 214, 196), bot: rgb(255, 226, 210), lm: [['jeep', 60], ['drums', 190, 3], ['sign', 262, 'MOTOR POOL', '#3a3a20', '#ffe6a0']], lights: [], beams: 0.4 },
       { name: 'Barracks', top: rgb(238, 190, 180), bot: rgb(246, 214, 204), lm: [['tent', 30, 78], ['tent', 150, 70], ['tent', 262, 74]], lights: [[70, 90, 24, [255, 200, 110], 1]], beams: 0.6, stars: 0.2 },
       { name: 'Fuel Depot', top: rgb(210, 160, 170), bot: rgb(226, 196, 196), lm: [['tank', 40], ['drums', 140, 5], ['sign', 232, 'FUEL', '#6a1a10', '#ffe0a0'], ['wire', 270]], lights: [], beams: 0.8, stars: 0.4 },
-      { name: 'Airfield', plate: 'base-airfield', top: rgb(160, 130, 170), bot: rgb(196, 176, 196), stars: 0.55, lm: [['sandbags', 230, 3]], lights: [], beams: 0.9 },
+      { name: 'Airfield', plate: 'base-airfield', lift: 0.13, top: rgb(160, 130, 170), bot: rgb(196, 176, 196), stars: 0.55, lm: [['sandbags', 230, 3]], lights: [], beams: 0.9 },
       { name: 'Wire Line', top: rgb(130, 112, 160), bot: rgb(176, 160, 186), stars: 0.7, fog: 0.2, lm: [['wire', 10], ['wire', 120], ['sign', 232, 'KEEP OUT', '#7a1010', '#ffffff'], ['sandbags', 290, 3]], lights: [], beams: 1 },
       { name: 'Bunker Row', top: rgb(106, 100, 150), bot: rgb(156, 150, 180), stars: 0.85, fog: 0.26, lm: [['bunker', 20], ['bunker', 170], ['lamp', 300, '#ff9a7a']], lights: [[300, 70, 30, [255, 150, 120], 1]], beams: 1 },
       { name: 'Command HQ', top: rgb(86, 84, 140), bot: rgb(140, 138, 176), stars: 1, fog: 0.3, warm: [255, 30, 40, 0.05], lm: [['hq', 30], ['flag', 210], ['sandbags', 270, 4]], lights: [[120, 60, 40, [255, 90, 90], 1]], beams: 1, siren: 1 },
@@ -76,9 +76,9 @@ export const SCREENS = {
       { name: 'Vine Thicket', top: rgb(190, 215, 175), bot: rgb(220, 235, 210), motes: 0.4, lm: [['vines', 20, 8], ['vines', 100, 6], ['vines', 200, 9], ['fern', 150], ['fern', 290]], lights: [] },
       { name: 'River Ford', top: rgb(175, 210, 215), bot: rgb(210, 232, 232), fog: 0.3, lm: [['rocks', 40], ['water', 120, 130], ['rocks', 270]], lights: [] },
       { name: 'Old Ruins', top: rgb(215, 215, 175), bot: rgb(232, 230, 200), lm: [['pillar', 30, 96], ['pillar', 100, 70], ['totem', 220], ['fern', 290]], lights: [[220, 70, 30, [255, 220, 120], 1]] },
-      { name: 'Dark Canopy', plate: 'jungle-canopy', top: rgb(120, 160, 130), bot: rgb(166, 196, 164), fog: 0.2, motes: 0.9, lm: [['fern', 30], ['fern', 290]], lights: [], flies: 1 },
+      { name: 'Dark Canopy', plate: 'jungle-canopy', lift: 0.12, top: rgb(120, 160, 130), bot: rgb(166, 196, 164), fog: 0.2, motes: 0.9, lm: [['fern', 30], ['fern', 290]], lights: [], flies: 1 },
       { name: 'Glow Cave', top: rgb(110, 140, 170), bot: rgb(160, 186, 196), fog: 0.25, motes: 0.7, lm: [['glowflower', 30], ['glowflower', 90], ['glowflower', 200], ['glowflower', 270], ['rocks', 150]], lights: [[34, 112, 28, [140, 220, 255], 1], [94, 112, 28, [200, 150, 255], 1], [204, 112, 28, [140, 220, 255], 1], [274, 112, 28, [200, 150, 255], 1]], flies: 1 },
-      { name: 'Waterfall Mist', plate: 'jungle-waterfall', top: rgb(190, 225, 235), bot: rgb(215, 238, 240), fog: 0.22, lm: [['rocks', 300]], lights: [] },
+      { name: 'Waterfall Mist', plate: 'jungle-waterfall', lift: 0.08, top: rgb(190, 225, 235), bot: rgb(215, 238, 240), fog: 0.22, lm: [['rocks', 300]], lights: [] },
       { name: 'Temple Approach', top: rgb(246, 226, 160), bot: rgb(250, 238, 200), warm: [255, 200, 60, 0.06], motes: 0.6, lm: [['totem', 30], ['totem', 270], ['pillar', 150, 100]], lights: [[160, 60, 50, [255, 210, 110], 1]] },
       { name: 'Home Clearing', top: rgb(255, 238, 190), bot: rgb(255, 246, 214), warm: [255, 210, 90, 0.09], motes: 0.8, lm: [['fern', 20], ['fern', 120], ['fern', 220], ['fern', 300], ['sign', 150, 'HOME', '#4a3a10', '#ffe890']], lights: [[160, 50, 60, [255, 230, 130], 1]] },
     ],
@@ -104,7 +104,7 @@ export function lookAt(kind, stops, cam) {
   const S = SCREENS[kind].screens, { i, j, t } = screenPos(stops, cam), a = S[i], b = S[j];
   const w = (x, y) => lerp(x || 0, y || 0, t), wa = a.warm || [0, 0, 0, 0], wb = b.warm || [0, 0, 0, 0];
   return { i, j, t, top: lerp3(a.top, b.top, t), bot: lerp3(a.bot, b.bot, t), warm: [lerp(wa[0], wb[0], t), lerp(wa[1], wb[1], t), lerp(wa[2], wb[2], t), w(wa[3], wb[3])],
-    fog: w(a.fog, b.fog), stars: w(a.stars, b.stars), rain: w(a.rain, b.rain), motes: w(a.motes, b.motes), beams: w(a.beams, b.beams), siren: w(a.siren, b.siren), flies: w(a.flies, b.flies), blink: w(a.blink, b.blink) };
+    fog: w(a.fog, b.fog), stars: w(a.stars, b.stars), rain: w(a.rain, b.rain), motes: w(a.motes, b.motes), beams: w(a.beams, b.beams), siren: w(a.siren, b.siren), flies: w(a.flies, b.flies), blink: w(a.blink, b.blink), lift: w(a.lift, b.lift) };
 }
 /** Stable signature of a screen's look, used by tests to count distinct looks. */
 export function signature(kind, idx, stops) {

@@ -99,6 +99,10 @@ export function drawGrade(ctx, kind, stops, cam, t, look) {
     ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = gr; ctx.fillRect(0, 0, 320, 180); ctx.globalCompositeOperation = 'source-over';
   }
   if (look.warm[3] > 0.004) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(${look.warm[0] | 0},${look.warm[1] | 0},${look.warm[2] | 0},${look.warm[3]})`; ctx.fillRect(0, 0, 320, 180); ctx.globalCompositeOperation = 'source-over'; }
+  if (look.lift > 0.01) { // soft light across the walk band so heroes and enemies stand out against dark floors (peaks mid-lane, fades above/below)
+    const gr = ctx.createLinearGradient(0, lane[0] - 14, 0, lane[1] + 8); gr.addColorStop(0, 'rgba(255,238,215,0)'); gr.addColorStop(0.5, `rgba(255,238,215,${look.lift})`); gr.addColorStop(1, 'rgba(255,238,215,0)');
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gr; ctx.fillRect(0, lane[0] - 14, 320, lane[1] - lane[0] + 22); ctx.globalCompositeOperation = 'source-over';
+  }
   if (look.stars > 0.02) { ctx.fillStyle = '#fff'; for (let i = 0; i < 28; i++) { const px = ((hash(i) * 400 - cam * 0.08) % 320 + 320) % 320, py = 4 + hash(i + 99) * 56; ctx.globalAlpha = look.stars * (0.35 + 0.65 * Math.abs(Math.sin(t * 1.6 + i))) ; ctx.fillRect(Math.round(px), Math.round(py), 1, 1); } ctx.globalAlpha = 1; }
   if (look.beams > 0.02 && kind === 'base') { ctx.globalCompositeOperation = 'lighter'; for (let b = 0; b < 2; b++) { const bx = ((b ? 250 : 60) + b * 40 - cam * 0.2 % 640 + 640) % 640 - 160, a = Math.sin(t * 0.7 + b * 2) * 0.35; ctx.fillStyle = `rgba(255,250,200,${0.13 * look.beams})`; ctx.beginPath(); ctx.moveTo(bx - 2, 44); ctx.lineTo(bx + Math.sin(a) * 130 - 14, -8); ctx.lineTo(bx + Math.sin(a) * 130 + 14, -8); ctx.lineTo(bx + 2, 44); ctx.fill(); } ctx.globalCompositeOperation = 'source-over'; }
   // lights of nearby screens (flicker a little), added after the grade so they stay bright

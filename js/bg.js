@@ -31,11 +31,31 @@ function plate(ctx, im, kind, cam) {
     });
   }
 }
-/** AI-painted plate for a landmark screen: drawn over the stage plate at its camera stop, soft-faded at both edges (baked alpha). */
+/** Haze strip that the neighbouring (old) plate fades into just outside an AI plate's edge: the plate's own per-row edge colour,
+ * alpha ramping 0 -> HAZE_A towards the edge. The plate itself ramps out of the same colour (baked in), so a slide goes
+ * old plate -> haze -> new plate with no two scenes overlapping (no ghosting). */
+const HZ = 30, HAZE_A = 0.94, hazeCache = {};
+function hazeStrip(kind, name, side) {
+  const key = kind + name + side; if (hazeCache[key]) return hazeCache[key];
+  const rows = A.bgMeta[kind].haze[name][side], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;
+  const tc = t.getContext('2d'), id = tc.createImageData(1, n); rows.forEach((c, i) => { id.data.set([c[0], c[1], c[2], 255], i * 4); }); tc.putImageData(id, 0, 0);
+  const c = document.createElement('canvas'); c.width = HZ; c.height = 180; const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(t, 0, 0, 1, n, 0, 0, HZ, 180);
+  const gr = g.createLinearGradient(0, 0, HZ, 0), e = side === 'l' ? 1 : 0; // alpha is highest at the plate edge
+  for (let i = 0; i <= 8; i++) { const u = i / 8, s = u * u * (3 - 2 * u); gr.addColorStop(u, `rgba(0,0,0,${HAZE_A * (e ? s : 1 - s)})`); }
+  g.globalCompositeOperation = 'destination-in'; g.fillStyle = gr; g.fillRect(0, 0, HZ, 180);
+  return hazeCache[key] = c;
+}
+/** AI-painted plate for a landmark screen: drawn over the stage plate at its camera stop. Its edges ramp out of a haze colour
+ * (baked), and the neighbouring plate is hazed over to the same colour right outside the edge. */
 function featured(ctx, L, kind, stops, cam) {
   if (!L.x) return;
   const scr = SCREENS[kind].screens;
-  for (let i = 0; i < stops.length; i++) { const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W || x + TILE_W < 0) continue; ctx.drawImage(L.x[p], Math.round(x * S) / S, 0, TILE_W, 180); }
+  for (let i = 0; i < stops.length; i++) {
+    const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W + HZ || x + TILE_W + HZ < 0) continue;
+    const xr = Math.round(x * S) / S;
+    ctx.drawImage(hazeStrip(kind, p, 'l'), xr - HZ, 0); ctx.drawImage(hazeStrip(kind, p, 'r'), xr + TILE_W, 0);
+    ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
+  }
 }
 const stopsCache = new WeakMap();
 const stopsFor = st => stopsCache.get(st) || (stopsCache.set(st, stopsOf(st)), stopsCache.get(st));

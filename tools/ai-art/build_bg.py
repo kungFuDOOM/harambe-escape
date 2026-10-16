@@ -51,20 +51,45 @@ EXTRA = {
     'base-airfield':    ('base',   0.765),
     'jungle-waterfall': ('jungle', 0.82),  'jungle-canopy':    ('jungle', 0.78),
 }
-FEATHER_X = 168   # device px (56 logic px) soft edge each side
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
+ZONE = 90         # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
+HAZE_ROWS = 45    # per-row haze colour samples stored in bg.json (runtime fades the neighbouring plate into the same haze)
+# Mean floor luminance (0-255) each plate's walk band is lifted to, so heroes/enemies read against it (stage floors sit at ~25-110).
+FLOOR_LUM = {'zoo-lion': 66, 'zoo-reptile': 72, 'city-stores': 30, 'city-bridge': 34, 'fbi-server': 96, 'fbi-archive': 114,
+             'base-airfield': 84, 'jungle-waterfall': 66, 'jungle-canopy': 78}
+LUMW = np.array([0.2126, 0.7152, 0.0722])
+def lift_floor(a, y0, y1, target):
+    """Raise shadows of rows y0.. with a power curve (keeps hue) until the band's mean luminance reaches target; soft ramp at the top."""
+    f = a.astype(np.float32) / 255; band = slice(y0, y1)
+    if (f[band] @ LUMW).mean() * 255 >= target: return a
+    lo, hi = 0.3, 1.0
+    for _ in range(24):
+        g = (lo + hi) / 2
+        if ((f[band] ** g) @ LUMW).mean() * 255 > target: lo = g
+        else: hi = g
+    out = f ** hi; ramp = np.clip((np.arange(a.shape[0]) - (y0 - 24)) / 24, 0, 1)[:, None, None]
+    return (np.clip(f * (1 - ramp) + out * ramp, 0, 1) * 255).astype(np.uint8)
 total = 0
 for name, (stage, F) in EXTRA.items():
     src = Image.open(f'{SRC}/bgx/{name}.jpg').convert('RGB')
-    sh = src.height; lane_top = meta[stage]['lane'][0]
+    sh = src.height; lane_top, lane_bot = meta[stage]['lane']
     T = (lane_top - FLOOR_LIFT) * 3  # target floor-top row in the 540px output
     fy = int(round(F * sh)); top = src.crop((0, 0, src.width, fy)).resize((W, T), Image.LANCZOS)
     bot = src.crop((0, fy, src.width, sh)).resize((W, H - T), Image.LANCZOS)
     a = np.concatenate([np.array(top), np.array(bot)], 0)
-    t = np.clip(np.arange(W) / FEATHER_X, 0, 1); t = np.minimum(t, t[::-1]); al = (t * t * (3 - 2 * t) * 255).astype(np.uint8)
-    rgba = np.dstack([a, np.tile(al, (H, 1))])
-    f = f'{OUT}/x_{name}.webp'; Image.fromarray(rgba).save(f, quality=72, alpha_quality=80, method=6)
+    a = lift_floor(a, lane_top * 3, min(H, lane_bot * 3 + 10), FLOOR_LUM[name])
+    # per-row haze colour of each side (edge columns, vertically blurred), then ramp the plate edge out of it (tone-matched fade)
+    k = np.ones(15) / 15; hz = {}
+    for side, cols in (('l', a[:, :12]), ('r', a[:, -12:])):
+        c = cols.astype(np.float32).mean(1); c = np.stack([np.convolve(np.pad(c[:, j], 7, mode='edge'), k, 'valid') for j in range(3)], 1)
+        hz[side] = c
+    t = np.clip(np.arange(W) / ZONE, 0, 1); t = np.minimum(t, t[::-1]); sm = (t * t * (3 - 2 * t))[None, :, None]
+    left = hz['l'][:, None, :]; right = hz['r'][:, None, :]; sidew = (np.arange(W) < W / 2)[None, :, None]
+    haze = np.where(sidew, left, right)
+    out = np.clip(a.astype(np.float32) * sm + haze * (1 - sm), 0, 255).astype(np.uint8)
+    f = f'{OUT}/x_{name}.webp'; Image.fromarray(out).save(f, quality=72, method=6)
     meta[stage].setdefault('extra', []).append(name); total += os.path.getsize(f)
+    meta[stage].setdefault('haze', {})[name] = {s: [[int(v) for v in hz[s][r]] for r in np.linspace(0, H - 1, HAZE_ROWS).astype(int)] for s in 'lr'}
     print(name, os.path.getsize(f) // 1024, 'KB')
 print('extras total', total // 1024, 'KB')
 json.dump(meta, open(f'{OUT}/bg.json', 'w'))
