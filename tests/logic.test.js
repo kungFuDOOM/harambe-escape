@@ -39,3 +39,18 @@ test('validateStage catches bad data', () => {
   const bad = { name: 'x', length: 1000, boss: 'nope', events: [{ at: 500, wave: [{ t: 'zzz' }] }, { at: 100, wave: [] }] };
   assert.ok(validateStage(bad, ENEMIES, BOSSES).length >= 3);
 });
+
+import fs from 'node:fs';
+test('art assets exist and sprite sheets expose every animation the game uses', () => {
+  const meta = JSON.parse(fs.readFileSync(new URL('../assets/sprites.json', import.meta.url)));
+  const need = { harambe: ['idle', 'walk', 'atk1', 'atk2', 'atk3', 'heavy', 'jump', 'jatk', 'hurt', 'down', 'special'] };
+  for (const k of [...Object.keys(ENEMIES), ...Object.keys(BOSSES)]) need[k] = ['idle', 'walk', 'run', 'windup', 'atk', 'hurt', 'down'];
+  for (const [name, anims] of Object.entries(need)) {
+    assert.ok(meta[name], 'sheet ' + name);
+    for (const a of anims) assert.ok(meta[name].anims[a]?.length, name + '.' + a);
+    for (const f of [name + '.png', name + '_f.png']) assert.ok(fs.existsSync(new URL('../assets/' + f, import.meta.url)), f);
+  }
+  for (const s of ['zoo', 'street', 'river', 'night', 'jungle']) for (const l of ['sky', 'far', 'mid', 'near', 'ground']) assert.ok(fs.existsSync(new URL(`../assets/bg_${s}_${l}.png`, import.meta.url)), s + l);
+  const props = JSON.parse(fs.readFileSync(new URL('../assets/props.json', import.meta.url)));
+  for (const k of ['crate', 'barrel', 'banana', 'net', 'haystack', 'spark0', 'bspark5', 'dust3', 'kid_fly', 'icon_harambe']) assert.ok(props[k], k);
+});

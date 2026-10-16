@@ -1,99 +1,110 @@
-// Procedural chunky pixel art: every sprite is a list of rects drawn with a 1px black outline.
-function drawRects(ctx, rects) {
-  ctx.fillStyle = '#0a0a12';
-  for (const [x, y, w, h] of rects) ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-  for (const [x, y, w, h, c] of rects) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
-}
-const sh = (c, a) => c; // palette placeholder
+// Sprite drawing: frames come from pre-rendered, shaded & outlined 16-bit style sheets (tools/art).
+import { A } from './assets.js';
 
-export function shadow(ctx, x, y, w = 16) {
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(Math.round(x - w / 2), Math.round(y - 1), w, 3);
+const FRAME = (sheetName, anim, i) => { const m = A.meta[sheetName], a = m.anims[anim]; return a[Math.max(0, Math.min(a.length - 1, i | 0))]; };
+function blitFrame(ctx, sheetName, anim, i, x, y, face, flash) {
+  const m = A.meta[sheetName]; if (!m) return;
+  const f = FRAME(sheetName, anim, i), sx = (f % m.cols) * m.cw, sy = Math.floor(f / m.cols) * m.ch;
+  const img = flash ? A.flash[sheetName] : A.sheets[sheetName];
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (face < 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, sx, sy, m.cw, m.ch, -m.ax, -m.ay, m.cw, m.ch); ctx.restore();
+}
+export function spr(ctx, name, x, y, flip = false) { // props atlas item, anchored bottom-centre
+  const r = A.props[name]; if (!r) return; ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2) , Math.round(y - r[3]), r[2], r[3]);
+}
+const white = {};
+function sprWhite(ctx, name, x, y) {
+  const r = A.props[name]; if (!r) return;
+  if (!white[name]) { const c = document.createElement('canvas'); c.width = r[2]; c.height = r[3]; const g = c.getContext('2d'); g.drawImage(A.propsImg, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]); g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#fff'; g.fillRect(0, 0, r[2], r[3]); white[name] = c; }
+  ctx.drawImage(white[name], Math.round(x - r[2] / 2), Math.round(y - r[3]));
 }
 
-/** Harambe: black gorilla, brown face, red TMNT-style bandana. */
+export function shadow(ctx, x, y, w = 16) { spr(ctx, w >= 34 ? 'shadow_l' : w >= 20 ? 'shadow_m' : 'shadow_s', x, y + 4); }
+
+/** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
-  const { x, y, z = 0, face, t = 0, state, at = 0, flash } = s; // at: attack progress 0..1
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y - z)); ctx.scale(face, 1);
-  const walk = state === 'walk' ? Math.sin(t * 14) : 0, bob = state === 'idle' ? Math.sin(t * 3) * 0.6 : 0;
-  const fur = flash ? '#fff' : '#26262e', fur2 = flash ? '#fff' : '#3a3a46', skin = flash ? '#fff' : '#8a5a3a';
-  if (state === 'down') { ctx.translate(0, -4); ctx.rotate(-Math.PI / 2 * 0.95); ctx.translate(0, 8); }
-  if (state === 'special') { ctx.scale(1 + Math.sin(at * 20) * 0.04, 1); }
-  const R = [], b = Math.round(bob);
-  const legA = Math.round(walk * 3), air = z > 1;
-  R.push([-9 + (air ? -2 : -legA), -11, 7, 11, fur], [2 + (air ? 3 : legA), -11, 7, 11, fur]);
-  R.push([-10 + (air ? -2 : -legA), -3, 9, 3, '#17171c'], [2 + (air ? 3 : legA), -3, 9, 3, '#17171c']);
-  R.push([-13, -29 + b, 26, 19, fur], [-9, -26 + b, 18, 10, fur2]); // torso + chest
-  R.push([-6, -42 + b, 14, 12, fur], [-3, -38 + b, 10, 8, skin], [1, -36 + b, 2, 2, '#fff'], [4, -36 + b, 2, 2, '#fff'], [2, -35 + b, 1, 1, '#000'], [5, -35 + b, 1, 1, '#000']);
-  R.push([-6, -43 + b, 14, 3, '#d8262e'], [-10, -42 + b, 5, 2, '#d8262e'], [-13, -40 + b + Math.round(Math.sin(t * 10) * 1.5), 4, 2, '#d8262e']); // bandana + tails
-  const k = state;
-  if (k === 'atk') { // light jabs, alternate arms by combo
-    const ext = Math.sin(Math.min(1, at) * Math.PI) * 16;
-    R.push([-15, -28 + b, 5, 15, fur], [8, -27 + b + (s.combo % 2 ? 0 : 3), 8 + ext, 6, fur], [14 + ext, -29 + b + (s.combo % 2 ? 0 : 3), 7, 9, fur2]);
-  } else if (k === 'heavy' || k === 'special') { // overhead slam
-    const up = at < 0.4 ? -12 - at * 20 : 0 + (at - 0.4) * 30;
-    R.push([-16, -30 + up, 6, 16, fur], [10, -30 + up, 6, 16, fur], [-18, -34 + up, 9, 8, fur2], [10, -34 + up, 9, 8, fur2]);
-  } else if (k === 'jatk') {
-    R.push([-15, -28 + b, 5, 15, fur], [9, -22, 18, 6, fur], [24, -24, 7, 9, fur2]);
-  } else if (k === 'hurt') {
-    R.push([-17, -26, 5, 15, fur], [12, -26, 5, 15, fur], [-3, -36, 6, 2, '#d8262e']);
-  } else {
-    R.push([-17, -29 + b, 6, 18 + Math.round(walk * 2), fur], [11, -29 + b, 6, 18 - Math.round(walk * 2), fur]);
+  const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
+  let anim = 'idle', i = 0;
+  switch (state) {
+    case 'walk': anim = 'walk'; i = (t * 11) % 6; break;
+    case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.7 ? 1 : 2; break;
+    case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
+    case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
+    case 'jatk': anim = 'jatk'; i = at < 0.5 ? 0 : 1; break;
+    case 'hurt': anim = 'hurt'; i = at < 0.4 ? 0 : 1; break;
+    case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.5 ? 2 : 1); break;
+    case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
+    default: anim = 'idle'; i = (t * 4) % 4;
   }
-  drawRects(ctx, R); ctx.restore();
+  blitFrame(ctx, 'harambe', anim, i, x, y - z, face, flash);
 }
 
+/** Humans & bosses: s.type selects the sheet. */
 export function drawHuman(ctx, s) {
-  const { x, y, z = 0, face, t = 0, state, at = 0, pal, scale = 1, flash, prop, windup, shield } = s;
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y - z)); ctx.scale(face * scale, scale);
-  const walk = state === 'walk' ? Math.sin(t * 12) : 0, c = n => (flash ? '#fff' : pal[n]);
-  if (state === 'down') { ctx.translate(0, -3); ctx.rotate(-Math.PI / 2 * 0.95); ctx.translate(0, 7); }
-  const R = []; const la = Math.round(walk * 3);
-  R.push([-5 - la, -10, 4, 10, c('pants')], [1 + la, -10, 4, 10, c('pants')], [-6 - la, -2, 6, 2, '#222'], [1 + la, -2, 6, 2, '#222']);
-  R.push([-6, -22, 12, 12, c('body')], [-6, -13, 12, 2, '#222']);
-  R.push([-4, -31, 8, 9, c('skin')], [-5, -33, 10, 3, c('hat')], [0, -35, 7, 2, c('hat')], [2, -28, 2, 2, '#000']);
-  if (windup) R.push([-3, -41, 6, 6, '#ffe03a'], [-1, -40, 2, 3, '#a00']);
-  if (state === 'atk') { const ext = Math.sin(Math.min(1, at) * Math.PI) * 12; R.push([4, -20, 7 + ext, 4, c('body')], [10 + ext, -21, 4, 5, c('skin')]); if (prop === 'anchor') R.push([8 + ext, -30, 3, 18, '#777'], [4 + ext, -32, 11, 3, '#777']); }
-  else if (state === 'hurt') R.push([-10, -20, 4, 8, c('body')], [6, -20, 4, 8, c('body')]);
-  else R.push([-9, -21 + la, 3, 9, c('body')], [6, -21 - la, 3, 9, c('body')]);
-  if (prop === 'tranq') R.push([6, -22, 14, 3, '#555'], [18, -23, 3, 5, '#c33']);
-  if (prop === 'rifle') R.push([5, -23, 18, 2, '#4a3a1e'], [20, -24, 4, 4, '#222']);
-  if (prop === 'net') R.push([6, -26, 3, 12, '#6a4a2a'], [4, -31, 9, 6, '#cfcf8a']);
-  if (prop === 'anchor' && state !== 'atk') R.push([7, -34, 2, 14, '#777'], [4, -36, 8, 3, '#777']);
-  if (shield) R.push([5, -26, 5, 20, '#9ab4d8'], [6, -24, 2, 16, '#cfe0f5']);
-  if (s.blocks && !shield) R.push([6, -22, 3, 9, '#6a748a']);
-  drawRects(ctx, R); ctx.restore();
+  const { x, y, z = 0, face, t = 0, state, at = 0, flash, type } = s;
+  let anim = 'idle', i = 0;
+  switch (state) {
+    case 'walk': anim = 'walk'; i = (t * 10) % 6; break;
+    case 'run': anim = 'run'; i = (t * 16) % 6; break;
+    case 'windup': anim = 'windup'; i = 0; break;
+    case 'atk': anim = 'atk'; i = at < 0.25 ? 0 : at < 0.6 ? 1 : 2; break;
+    case 'hurt': anim = 'hurt'; i = at < 0.5 ? 0 : 1; break;
+    case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.45 ? 2 : 1); break;
+    default: anim = 'idle'; i = (t * 3) % 2;
+  }
+  blitFrame(ctx, type, anim, i, x, y - z, face, flash);
 }
 
-export function drawKid(ctx, x, y, rot = 0) {
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(rot);
-  drawRects(ctx, [[-3, -7, 6, 7, '#ff8a2a'], [-3, -12, 6, 5, '#f2c49b'], [-4, -13, 8, 2, '#5a3a1a'], [-6, -6, 3, 2, '#f2c49b'], [3, -6, 3, 2, '#f2c49b'], [-3, 0, 2, 4, '#3a6ad8'], [1, 0, 2, 4, '#3a6ad8']]);
-  ctx.restore();
+export function drawKid(ctx, x, y, pose = 'kid_idle', face = 1) {
+  const r = A.props[pose]; if (!r) return;
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (face < 0) ctx.scale(-1, 1);
+  ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], -22, -40, r[2], r[3]); ctx.restore();
 }
 
 export function drawProp(ctx, p) {
-  const x = Math.round(p.x), y = Math.round(p.y), f = p.flash ? '#fff' : null;
-  ctx.save(); ctx.translate(x, y);
-  if (p.kind === 'crate') drawRects(ctx, [[-9, -16, 18, 16, f || '#b8843a'], [-9, -16, 18, 3, f || '#8a5a22'], [-9, -4, 18, 4, f || '#8a5a22'], [-1, -16, 3, 16, f || '#8a5a22']]);
-  else drawRects(ctx, [[-7, -20, 14, 20, f || '#c0392b'], [-8, -16, 16, 3, '#555'], [-8, -6, 16, 3, '#555'], [-5, -22, 10, 3, f || '#8f2a20']]);
-  ctx.restore();
+  const f = p.flash ? sprWhite : spr; f(ctx, p.kind === 'crate' ? 'crate' : 'barrel', p.x, p.y);
 }
 
 export function drawBanana(ctx, x, y, t, big) {
-  const bob = Math.round(Math.sin(t * 6) * 2), k = big ? 1.6 : 1;
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y - 8 + bob)); ctx.scale(k, k);
-  drawRects(ctx, [[-5, -2, 3, 4, '#ffe03a'], [-3, 1, 5, 3, '#ffe03a'], [2, -1, 3, 3, '#ffe03a'], [4, -4, 2, 3, '#ffd01a'], [-6, -4, 2, 2, '#6a4a1a']]);
-  ctx.restore();
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(Math.round(x - 5), Math.round(y), 10, 2);
+  const bob = Math.round(Math.sin(t * 6) * 2); shadow(ctx, x, y, 10);
+  spr(ctx, big ? 'banana_big' : 'banana', x, y - 4 + bob);
 }
+export function drawNet(ctx, n) { spr(ctx, 'net', n.x, n.y - n.z + 10); }
+export function drawSpark(ctx, x, y, k, big) { const n = Math.min(5, Math.floor(k * 6)); const r = A.props[(big ? 'bspark' : 'spark') + n]; if (r) ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2), Math.round(y - r[3] / 2), r[2], r[3]); }
+export function drawDust(ctx, x, y, k) { const n = Math.min(3, Math.floor(k * 4)); spr(ctx, 'dust' + n, x, y + 4); }
 
-export function drawNet(ctx, n) {
-  ctx.save(); ctx.translate(Math.round(n.x), Math.round(n.y - n.z));
-  drawRects(ctx, [[-6, -6, 12, 12, '#d8d8a0'], [-6, -1, 12, 1, '#7a7a50'], [-1, -6, 1, 12, '#7a7a50']]); ctx.restore();
+// ---- pixel font ----
+const CH = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u2665\u25b6';
+const cache = new Map();
+function idxOf(c) { let i = CH.indexOf(c); if (i < 0) i = CH.indexOf(c.toUpperCase()); return i; }
+function render(str, color, scale, outline) {
+  const key = str + '|' + color + '|' + scale + '|' + outline; let c = cache.get(key); if (c) return c;
+  const pad = outline ? scale : 0, w = str.length * 6 * scale + pad * 2 + 1, h = 8 * scale + pad * 2 + 1;
+  const mk = col => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    for (let k = 0; k < str.length; k++) { const gi = idxOf(str[k]); if (gi < 0) continue; g.drawImage(A.font, (gi % 16) * 6, Math.floor(gi / 16) * 8, 6, 8, pad + k * 6 * scale, pad, 6 * scale, 8 * scale); }
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, w, h); return cv; };
+  const out = document.createElement('canvas'); out.width = w; out.height = h; const g = out.getContext('2d');
+  if (outline) { const o = mk(outline); for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1], [0, 2]]) g.drawImage(o, dx * scale, dy * scale); }
+  g.drawImage(mk(color), 0, 0); cache.set(key, out); return out;
 }
-
+export function textWidth(str, size = 8) { return str.length * 6 * (size <= 9 ? 1 : size <= 14 ? 2 : 3); }
 export function drawText(ctx, str, x, y, color = '#fff', size = 8, align = 'left', outline = '#000') {
-  ctx.font = `bold ${size}px "Courier New", monospace`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = outline;
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) ctx.fillText(str, Math.round(x + dx), Math.round(y + dy));
-  ctx.fillStyle = color; ctx.fillText(str, Math.round(x), Math.round(y));
+  const scale = size <= 9 ? 1 : size <= 14 ? 2 : 3; str = String(str);
+  const c = render(str, color, scale, outline), w = str.length * 6 * scale, pad = outline ? scale : 0;
+  let dx = x; if (align === 'center') dx = x - w / 2; else if (align === 'right') dx = x - w;
+  ctx.drawImage(c, Math.round(dx) - pad, Math.round(y - 7 * scale) - pad);
+}
+/** Big logo text: cel-shaded 4-stop fill, thick dark outline and drop shadow. cols = [top, upperMid, lowerMid, bottom]. */
+export function drawLogo(ctx, str, cx, y, scale, cols, edge = '#2a0a00') {
+  const w = str.length * 6 * scale, h = 8 * scale, pad = 3, cv = document.createElement('canvas'); cv.width = w + pad * 2; cv.height = h + pad * 2 + 3; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  const base = document.createElement('canvas'); base.width = w; base.height = h; const b = base.getContext('2d');
+  for (let k = 0; k < str.length; k++) { const gi = idxOf(str[k]); if (gi >= 0) b.drawImage(A.font, (gi % 16) * 6, Math.floor(gi / 16) * 8, 6, 8, k * 6 * scale, 0, 6 * scale, 8 * scale); }
+  b.globalCompositeOperation = 'source-atop';
+  const rows = [[0, 0.16, cols[0]], [0.16, 0.5, cols[1]], [0.5, 0.84, cols[2]], [0.84, 1, cols[3]]];
+  for (const [a0, a1, c] of rows) { b.fillStyle = c; b.fillRect(0, Math.round(a0 * h), w, Math.ceil((a1 - a0) * h)); }
+  const tint = col => { const t = document.createElement('canvas'); t.width = w; t.height = h; const q = t.getContext('2d'); q.drawImage(base, 0, 0); q.globalCompositeOperation = 'source-in'; q.fillStyle = col; q.fillRect(0, 0, w, h); return t; };
+  const dark = tint(edge), black = tint('#000'); const r = Math.max(1, Math.round(scale * 0.6));
+  for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r + 2; dy++) if (dx * dx + dy * dy <= r * r + 1 || dy > r) g.drawImage(dy > r ? black : dark, pad + dx, pad + dy);
+  g.drawImage(base, pad, pad);
+  ctx.drawImage(cv, Math.round(cx - cv.width / 2), Math.round(y));
 }
