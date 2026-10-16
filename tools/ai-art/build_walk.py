@@ -61,9 +61,31 @@ def build():
     ox, oy = PX - cx4, BASE - f4['h']
     full4 = Image.new('RGBA', (CW, CH), (0, 0, 0, 0)); full4.paste(im4, (int(round(ox)), int(round(oy))), im4)
     xd = int(round(ox + AX4 + HIP[0]))
+    def flatten_foot(layer, front):
+        """The sheet's feet are drawn tilted (front toe up, rear toe down). Search the rotation that makes each sole's bottom edge horizontal and apply it
+        to the foot, easing it in over the ankle rows so the trouser leg above is untouched. Pivot = sole centre at the lowest row (stays on the ground line)."""
+        a = np.array(layer); H_, W_ = a.shape[:2]; yy, xx = np.mgrid[0:H_, 0:W_]
+        def sole(arr):
+            al = arr[:, :, 3] > 40; ys, xs = np.where(al[int(oy) + 150:]); ys = ys + int(oy) + 150
+            cols = np.unique(xs); bot = np.array([ys[xs == c].max() for c in cols]); sel = bot >= bot.max() - 14
+            return cols[sel], bot[sel], bot.max()
+        c0, b0, bm = sole(a); px, py = float(c0.mean()), float(bm); ya, yb = oy + 148, oy + 172
+        w = np.clip((yy - ya) / (yb - ya), 0, 1); w = w * w * (3 - 2 * w)
+        def rot(th):
+            ang = th * w; c, sn = np.cos(ang), np.sin(ang); dx, dy = xx - px, yy - py
+            sx = np.rint(px + c * dx - sn * dy).astype(int); sy = np.rint(py + sn * dx + c * dy).astype(int)
+            ok = (sx >= 0) & (sx < W_) & (sy >= 0) & (sy < H_); o = np.zeros_like(a); o[ok] = a[sy[ok], sx[ok]]; return o
+        def axis():
+            """Foot orientation = principal axis of its tan (skin) pixels."""
+            rgb = a[:, :, :3].astype(int); tan = (a[:, :, 3] > 40) & (rgb[:, :, 0] > 140) & (rgb[:, :, 0] - rgb[:, :, 2] > 40) & (yy > oy + 158)
+            X = np.stack([xx[tan], yy[tan]], 1).astype(float); X -= X.mean(0); ev, evec = np.linalg.eigh(np.cov(X.T)); v = evec[:, 1]
+            if v[0] < 0: v = -v
+            return math.atan2(v[1], v[0])
+        best = max(-28, min(28, math.degrees(axis())))
+        return Image.fromarray(rot(math.radians(best)), 'RGBA'), best
     def leg_piece(front):
         a = np.array(full4); cols = np.arange(CW)[None, :]; rows = np.arange(CH)[:, None]
-        m = (rows >= oy + CUT) & ((cols >= xd) if front else (cols < xd)); a[:, :, 3] = np.where(m, a[:, :, 3], 0); return Image.fromarray(a, 'RGBA')
+        m = (rows >= oy + CUT) & ((cols >= xd) if front else (cols < xd)); a[:, :, 3] = np.where(m, a[:, :, 3], 0); return flatten_foot(Image.fromarray(a, 'RGBA'), front)[0]
     rear, front = leg_piece(False), leg_piece(True)
     y0, ank = int(oy + CUT), int(oy + ANKLE_ROW)
     TRAVEL = 60.0                       # native rear foot (-49) to native front foot (+30), device px
