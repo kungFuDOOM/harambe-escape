@@ -1,13 +1,15 @@
 // Sprite drawing: frames come from pre-rendered, shaded & outlined 16-bit style sheets (tools/art).
 import { A } from './assets.js';
 
-const FRAME = (sheetName, anim, i) => { const m = A.meta[sheetName], a = m.anims[anim]; return a[Math.max(0, Math.min(a.length - 1, i | 0))]; };
+const S = 3; // device px per logic px: atlas frames are baked at 3x
+const q3 = v => Math.round(v * S) / S; // snap to device pixels so sprites never shimmer
+/** Draw one atlas frame anchored at its feet (ax, ay). `face` < 0 mirrors it. */
 function blitFrame(ctx, sheetName, anim, i, x, y, face, flash) {
-  const m = A.meta[sheetName]; if (!m) return;
-  const f = FRAME(sheetName, anim, i), sx = (f % m.cols) * m.cw, sy = Math.floor(f / m.cols) * m.ch;
+  const m = A.atlas[sheetName]; if (!m) return;
+  const a = m.anims[anim] || m.anims.idle, f = m.frames[a[Math.max(0, Math.min(a.length - 1, i | 0))]];
   const img = flash ? A.flash[sheetName] : A.sheets[sheetName];
-  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (face < 0) ctx.scale(-1, 1);
-  ctx.drawImage(img, sx, sy, m.cw, m.ch, -m.ax, -m.ay, m.cw, m.ch); ctx.restore();
+  ctx.save(); ctx.translate(q3(x), q3(y)); if (face < 0) ctx.scale(-1, 1);
+  ctx.drawImage(img, f.x, f.y, f.w, f.h, -f.ax / S, -f.ay / S, f.w / S, f.h / S); ctx.restore();
 }
 export function spr(ctx, name, x, y, flip = false) { // props atlas item, anchored bottom-centre
   const r = A.props[name]; if (!r) return; ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2) , Math.round(y - r[3]), r[2], r[3]);
@@ -19,46 +21,48 @@ function sprWhite(ctx, name, x, y) {
   ctx.drawImage(white[name], Math.round(x - r[2] / 2), Math.round(y - r[3]));
 }
 
-export function shadow(ctx, x, y, w = 16) { spr(ctx, w >= 34 ? 'shadow_l' : w >= 20 ? 'shadow_m' : 'shadow_s', x, y + 4); }
+export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0;
   switch (state) {
-    case 'walk': anim = 'walk'; i = (t * 11) % 6; break;
-    case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.7 ? 1 : 2; break;
+    case 'walk': anim = 'walk'; i = (t * 9) % 4; break;
+    case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
-    case 'jatk': anim = 'jatk'; i = at < 0.5 ? 0 : 1; break;
-    case 'hurt': anim = 'hurt'; i = at < 0.4 ? 0 : 1; break;
+    case 'jatk': anim = 'jatk'; i = 0; break;
+    case 'hurt': anim = 'hurt'; i = 0; break;
     case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.5 ? 2 : 1); break;
     case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
-    default: anim = 'idle'; i = (t * 4) % 4;
+    default: anim = 'idle'; i = (t * 3) % 4;
   }
   blitFrame(ctx, 'harambe', anim, i, x, y - z, face, flash);
 }
 
-/** Humans & bosses: s.type selects the sheet. */
+/** Humans & bosses: s.type is the atlas character (e.g. 'cop_baton'). */
 export function drawHuman(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, type } = s;
+  const m = A.atlas[type]; if (!m) return;
   let anim = 'idle', i = 0;
   switch (state) {
-    case 'walk': anim = 'walk'; i = (t * 10) % 6; break;
-    case 'run': anim = 'run'; i = (t * 16) % 6; break;
-    case 'windup': anim = 'windup'; i = 0; break;
-    case 'atk': anim = 'atk'; i = at < 0.25 ? 0 : at < 0.6 ? 1 : 2; break;
-    case 'hurt': anim = 'hurt'; i = at < 0.5 ? 0 : 1; break;
+    case 'walk': anim = 'walk'; i = (t * 7) % m.anims.walk.length; break;
+    case 'run': anim = 'walk'; i = (t * 13) % m.anims.walk.length; break;
+    case 'windup': anim = 'windup'; i = (t * 8) % m.anims.windup.length; break;
+    case 'atk': anim = 'atk'; i = Math.min(m.anims.atk.length - 1, Math.floor(at * m.anims.atk.length)); break;
+    case 'hurt': anim = 'hurt'; i = 0; break;
     case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.45 ? 2 : 1); break;
-    default: anim = 'idle'; i = (t * 3) % 2;
+    default: anim = 'idle'; i = 0;
   }
-  blitFrame(ctx, type, anim, i, x, y - z, face, flash);
+  const bob = (state === 'walk' || state === 'run') && m.anims.walk.length < 2 ? Math.abs(Math.sin(t * 9)) * 1.6 : 0; // single-frame walkers get a stomp bob
+  blitFrame(ctx, type, anim, i, x, y - z - bob, face, flash);
 }
 
 export function drawKid(ctx, x, y, pose = 'kid_idle', face = 1) {
   const r = A.props[pose]; if (!r) return;
   ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (face < 0) ctx.scale(-1, 1);
-  ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], -22, -40, r[2], r[3]); ctx.restore();
+  ctx.scale(1.5, 1.5); ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], -22, -40, r[2], r[3]); ctx.restore();
 }
 
 export function drawProp(ctx, p) {
@@ -69,7 +73,17 @@ export function drawBanana(ctx, x, y, t, big) {
   const bob = Math.round(Math.sin(t * 6) * 2); shadow(ctx, x, y, 10);
   spr(ctx, big ? 'banana_big' : 'banana', x, y - 4 + bob);
 }
-export function drawNet(ctx, n) { spr(ctx, 'net', n.x, n.y - n.z + 10); }
+/** Comic projectiles: nets, tranquilizer darts, stun bolts, cannon shells. */
+export function drawProj(ctx, n, t = 0) {
+  const x = Math.round(n.x), y = Math.round(n.y - n.z), d = Math.sign(n.vx) || 1;
+  switch (n.kind) {
+    case 'dart': ctx.fillStyle = '#e8f0f0'; ctx.fillRect(x - 5 * d - (d < 0 ? 0 : 0), y, 10, 1); ctx.fillStyle = '#4ae06a'; ctx.fillRect(x + 3 * d - (d < 0 ? 2 : 0), y - 1, 3, 3); ctx.fillStyle = '#ff4a4a'; ctx.fillRect(x - 7 * d - (d < 0 ? 3 : 0), y - 1, 3, 3); break;
+    case 'bolt': { ctx.strokeStyle = '#bff4ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 9 * d, y); for (let k = 1; k <= 6; k++) ctx.lineTo(x - 9 * d + k * 3 * d, y + (k % 2 ? -3 : 3) * (1 + Math.sin(t * 40 + k) * 0.3)); ctx.stroke(); ctx.strokeStyle = '#3aa8ff'; ctx.beginPath(); ctx.moveTo(x - 9 * d, y + 1); ctx.lineTo(x + 9 * d, y + 1); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.fillRect(x + 8 * d - 1, y - 1, 3, 3); break; }
+    case 'shell': { ctx.fillStyle = '#2a2a30'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#ffb02a'; ctx.beginPath(); ctx.arc(x - 6 * d, y, 3 + Math.sin(t * 50), 0, 7); ctx.fill(); ctx.fillStyle = '#fff2a0'; ctx.beginPath(); ctx.arc(x - 6 * d, y, 1.5, 0, 7); ctx.fill(); ctx.fillStyle = '#7a7a88'; ctx.fillRect(x - 2, y - 3, 3, 2); break; }
+    default: spr(ctx, 'net', n.x, n.y - n.z + 10); break;
+  }
+}
+export function drawNet(ctx, n) { drawProj(ctx, n); }
 export function drawSpark(ctx, x, y, k, big) { const n = Math.min(5, Math.floor(k * 6)); const r = A.props[(big ? 'bspark' : 'spark') + n]; if (r) ctx.drawImage(A.propsImg, r[0], r[1], r[2], r[3], Math.round(x - r[2] / 2), Math.round(y - r[3] / 2), r[2], r[3]); }
 export function drawDust(ctx, x, y, k) { const n = Math.min(3, Math.floor(k * 4)); spr(ctx, 'dust' + n, x, y + 4); }
 

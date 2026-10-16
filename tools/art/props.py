@@ -1,7 +1,7 @@
 import json, os, math, random
 from rig import *
 from bgl import *
-from chars import OUTD
+OUTD = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets')
 
 def prop_sheet():
     items = {}

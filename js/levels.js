@@ -1,75 +1,100 @@
-// Stage data. Enemy waves trigger when the camera reaches `at`.
+// Stage data. Enemy waves trigger when the camera reaches `at`. Every stage is harder than the last:
+// stats are scaled by STAGES[i].diff on top of each enemy's base stats, waves get bigger, more enemies attack at once.
 const L = 'L', R = 'R';
 const w = (t, side = R, n = 1) => Array.from({ length: n }, (_, i) => ({ t, side: i % 2 ? (side === R ? L : R) : side }));
 const cat = (...a) => a.flat();
 
+/** kind: melee | lunge (dash kick) | ranged. proj: net | dart | bolt. `reach` = how far the hit extends in front. */
 export const ENEMIES = {
-  keeper:  { name: 'Zookeeper',  hp: 28, speed: 34, dmg: 7,  pts: 100, pal: { body: '#c9a24a', pants: '#6b5a2a', hat: '#8a6a22', skin: '#f2c49b' }, kind: 'melee' },
-  guard:   { name: 'Security',   hp: 42, speed: 42, dmg: 9,  pts: 160, pal: { body: '#3a63c8', pants: '#1f2f66', hat: '#1b2550', skin: '#e0a577' }, kind: 'melee' },
-  catcher: { name: 'Animal Control', hp: 32, speed: 30, dmg: 8, pts: 180, pal: { body: '#3da35a', pants: '#2a5a35', hat: '#255a35', skin: '#f2c49b' }, kind: 'net' },
-  cop:     { name: 'Cop',        hp: 58, speed: 40, dmg: 11, pts: 250, pal: { body: '#27315f', pants: '#161c3a', hat: '#10142b', skin: '#d9a07a' }, kind: 'melee', blocks: true },
-  tourist: { name: 'Angry Tourist', hp: 20, speed: 54, dmg: 5, pts: 80, pal: { body: '#ff7ac8', pants: '#3a8ad8', hat: '#ffd23a', skin: '#f2c49b' }, kind: 'melee' },
-  sailor:  { name: 'Dockhand',   hp: 50, speed: 36, dmg: 12, pts: 220, pal: { body: '#e8e8e8', pants: '#2a3b66', hat: '#e8e8e8', skin: '#c98b62' }, kind: 'melee' },
-  hunter:  { name: 'Hunter',     hp: 48, speed: 34, dmg: 10, pts: 300, pal: { body: '#8a6a3a', pants: '#4a3a1e', hat: '#5a4a24', skin: '#e0a577' }, kind: 'net' },
+  // 1: zoo
+  keeper_net:  { name: 'Net Keeper',   sheet: 'keeper_net',  hp: 30, speed: 34, dmg: 6,  pts: 100, kind: 'melee',  reach: 30 },
+  keeper_dart: { name: 'Dart Keeper',  sheet: 'keeper_dart', hp: 26, speed: 30, dmg: 6,  pts: 150, kind: 'ranged', proj: 'dart', range: 120 },
+  keeper_stun: { name: 'Stun Keeper',  sheet: 'keeper_stun', hp: 36, speed: 38, dmg: 7,  pts: 150, kind: 'melee',  reach: 28 },
+  // 2: city
+  cop_baton:   { name: 'Cop',          sheet: 'cop_baton',   hp: 46, speed: 38, dmg: 8,  pts: 200, kind: 'melee',  reach: 34 },
+  cop_shield:  { name: 'Riot Cop',     sheet: 'cop_shield',  hp: 64, speed: 32, dmg: 9,  pts: 260, kind: 'melee',  reach: 26, blocks: true },
+  cop_taser:   { name: 'Taser Cop',    sheet: 'cop_taser',   hp: 40, speed: 34, dmg: 8,  pts: 240, kind: 'ranged', proj: 'bolt', range: 125 },
+  // 3: FBI
+  agent_kick:  { name: 'Agent',        sheet: 'agent_kick',  hp: 60, speed: 46, dmg: 10, pts: 300, kind: 'lunge',  reach: 34 },
+  agent_net:   { name: 'Net Agent',    sheet: 'agent_net',   hp: 52, speed: 36, dmg: 10, pts: 340, kind: 'ranged', proj: 'net',  range: 135 },
+  agent_case:  { name: 'Case Agent',   sheet: 'agent_case',  hp: 70, speed: 40, dmg: 11, pts: 360, kind: 'melee',  reach: 36, double: true },
+  // 4: military
+  soldier_shield: { name: 'Shield Trooper', sheet: 'soldier_shield', hp: 90, speed: 34, dmg: 12, pts: 420, kind: 'melee', reach: 28, blocks: true },
+  soldier_net:    { name: 'Net Gunner',     sheet: 'soldier_net',    hp: 70, speed: 36, dmg: 12, pts: 460, kind: 'ranged', proj: 'net', range: 140, burst: 2 },
+  soldier_baton:  { name: 'Shock Trooper',  sheet: 'soldier_baton',  hp: 100, speed: 42, dmg: 13, pts: 520, kind: 'melee', reach: 36, double: true },
 };
 
+/** Boss moves: melee, charge, slam (shockwave), shoot (comic projectile fan), summon. */
 export const BOSSES = {
-  headkeeper: { name: 'HEAD KEEPER', hp: 260, speed: 36, dmg: 12, pts: 2000, scale: 1.5, pal: { body: '#e0b84a', pants: '#5a4a1e', hat: '#b02a2a', skin: '#f2c49b' }, moves: ['charge', 'melee'], prop: 'tranq' },
-  chiefcatcher: { name: 'CHIEF CATCHER', hp: 340, speed: 38, dmg: 13, pts: 3000, scale: 1.5, pal: { body: '#2f9a54', pants: '#1b5a31', hat: '#e0d23a', skin: '#e0a577' }, moves: ['net', 'charge', 'melee'], prop: 'net' },
-  riotcaptain: { name: 'RIOT CAPTAIN', hp: 420, speed: 34, dmg: 15, pts: 4000, scale: 1.55, pal: { body: '#1e2447', pants: '#10142b', hat: '#0a0d1e', skin: '#d9a07a' }, moves: ['slam', 'charge', 'melee'], prop: 'shield', blocks: true },
-  bargeboss: { name: 'BARGE BOSS', hp: 480, speed: 33, dmg: 16, pts: 5000, scale: 1.7, pal: { body: '#c84a2a', pants: '#2a3b66', hat: '#e8e8e8', skin: '#c98b62' }, moves: ['slam', 'summon', 'melee'], prop: 'anchor' },
-  safarihunter: { name: 'BARON VON SAFARI', hp: 700, speed: 40, dmg: 18, pts: 10000, scale: 1.65, pal: { body: '#a98a4a', pants: '#3a2a14', hat: '#d8c07a', skin: '#e0a577' }, moves: ['net', 'charge', 'slam', 'summon', 'melee'], prop: 'rifle', summons: 'hunter' },
+  boss_head:    { name: 'HEAD ZOOKEEPER', sheet: 'boss_head',    hp: 300, speed: 36, dmg: 11, pts: 2000,  moves: ['charge', 'melee', 'shoot'], proj: 'dart', summons: 'keeper_net' },
+  boss_captain: { name: 'POLICE CAPTAIN', sheet: 'boss_captain', hp: 420, speed: 36, dmg: 13, pts: 3500,  moves: ['charge', 'melee', 'shoot', 'summon'], proj: 'bolt', summons: 'cop_baton', blocks: true },
+  boss_agent:   { name: 'SPECIAL AGENT',  sheet: 'boss_agent',   hp: 520, speed: 46, dmg: 14, pts: 5000,  moves: ['charge', 'melee', 'shoot', 'slam', 'summon'], proj: 'net', summons: 'agent_kick' },
+  boss_general: { name: 'ARMORED GENERAL', sheet: 'boss_general', hp: 700, speed: 32, dmg: 17, pts: 7500, moves: ['slam', 'shoot', 'melee', 'charge', 'summon'], proj: 'shell', summons: 'soldier_shield' },
+  boss_baron:   { name: 'THE BARON',      sheet: 'boss_baron',   hp: 950, speed: 42, dmg: 19, pts: 15000, moves: ['shoot', 'charge', 'slam', 'melee', 'summon'], proj: 'shell', summons: ['agent_kick', 'cop_taser', 'soldier_baton', 'keeper_dart'] },
 };
 
 export const STAGES = [
   {
-    name: 'CINCINNATI ZOO', sub: 'HAY THERE, KID', bg: 'zoo', length: 1500, boss: 'headkeeper', music: { root: 57, tempo: 132, mode: 'minor' },
+    name: 'CINCINNATI ZOO', sub: 'HAY THERE, KID', bg: 'zoo', length: 1700, boss: 'boss_head', music: { root: 57, tempo: 132, mode: 'minor' },
+    diff: { hp: 1, spd: 1, dmg: 1, cd: 1, atk: 2 },
     events: [
-      { at: 180, wave: cat(w('keeper', R, 2)) },
-      { at: 520, wave: cat(w('keeper', R, 3)) },
-      { at: 900, wave: cat(w('keeper', R, 2), w('guard', L, 1)) },
-      { at: 1180, wave: cat(w('guard', R, 2), w('keeper', L, 2)) },
+      { at: 180, wave: cat(w('keeper_net', R, 2)) },
+      { at: 520, wave: cat(w('keeper_net', R, 2), w('keeper_dart', L, 1)) },
+      { at: 880, wave: cat(w('keeper_stun', R, 2), w('keeper_dart', L, 1)) },
+      { at: 1200, wave: cat(w('keeper_net', R, 2), w('keeper_stun', L, 2)) },
     ],
-    props: [{ x: 300, kind: 'crate' }, { x: 680, kind: 'barrel' }, { x: 1020, kind: 'crate' }, { x: 1300, kind: 'barrel' }],
+    props: [{ x: 300, kind: 'crate' }, { x: 680, kind: 'barrel' }, { x: 1020, kind: 'crate' }, { x: 1400, kind: 'barrel' }],
   },
   {
-    name: 'VINE STREET', sub: 'NOT THE ZOO BUS', bg: 'street', length: 1700, boss: 'chiefcatcher', music: { root: 52, tempo: 144, mode: 'dorian' },
+    name: 'VINE STREET', sub: 'THE COPS ARRIVE', bg: 'street', length: 1900, boss: 'boss_captain', music: { root: 52, tempo: 144, mode: 'dorian' },
+    diff: { hp: 1.2, spd: 1.07, dmg: 1.12, cd: 0.92, atk: 2 },
     events: [
-      { at: 160, wave: cat(w('guard', R, 2), w('tourist', L, 2)) },
-      { at: 520, wave: cat(w('catcher', R, 2), w('keeper', L, 2)) },
-      { at: 900, wave: cat(w('tourist', R, 4), w('guard', L, 1)) },
-      { at: 1260, wave: cat(w('catcher', R, 2), w('guard', L, 2)) },
+      { at: 160, wave: cat(w('cop_baton', R, 2), w('keeper_stun', L, 1)) },
+      { at: 500, wave: cat(w('cop_shield', R, 2), w('cop_taser', L, 1)) },
+      { at: 860, wave: cat(w('cop_baton', R, 2), w('cop_taser', L, 2)) },
+      { at: 1180, wave: cat(w('cop_shield', R, 2), w('cop_baton', L, 2), w('cop_taser', R, 1)) },
+      { at: 1500, wave: cat(w('cop_taser', R, 2), w('cop_shield', L, 2), w('cop_baton', R, 1)) },
     ],
-    props: [{ x: 280, kind: 'barrel' }, { x: 640, kind: 'crate' }, { x: 1080, kind: 'barrel' }, { x: 1400, kind: 'crate' }],
+    props: [{ x: 280, kind: 'barrel' }, { x: 640, kind: 'crate' }, { x: 1080, kind: 'barrel' }, { x: 1440, kind: 'crate' }],
   },
   {
-    name: 'OHIO RIVERFRONT', sub: 'ROEBLING RUMBLE', bg: 'river', length: 1800, boss: 'riotcaptain', music: { root: 55, tempo: 150, mode: 'minor' },
+    name: 'FBI FIELD OFFICE', sub: 'MEN IN BLACK SUITS', bg: 'office', length: 2100, boss: 'boss_agent', music: { root: 55, tempo: 150, mode: 'minor' },
+    diff: { hp: 1.45, spd: 1.14, dmg: 1.25, cd: 0.85, atk: 3 },
     events: [
-      { at: 150, wave: cat(w('cop', R, 2), w('guard', L, 1)) },
-      { at: 500, wave: cat(w('sailor', R, 2), w('catcher', L, 2)) },
-      { at: 900, wave: cat(w('cop', R, 2), w('sailor', L, 2)) },
-      { at: 1300, wave: cat(w('sailor', R, 3), w('cop', L, 2)) },
+      { at: 150, wave: cat(w('agent_kick', R, 2), w('cop_taser', L, 1)) },
+      { at: 480, wave: cat(w('agent_case', R, 2), w('agent_net', L, 1)) },
+      { at: 820, wave: cat(w('agent_kick', R, 3), w('agent_net', L, 1)) },
+      { at: 1150, wave: cat(w('agent_case', R, 2), w('agent_kick', L, 2), w('agent_net', R, 1)) },
+      { at: 1480, wave: cat(w('agent_net', R, 2), w('agent_case', L, 2), w('cop_shield', R, 1)) },
+      { at: 1740, wave: cat(w('agent_kick', R, 2), w('agent_case', L, 2), w('agent_net', R, 2)) },
     ],
-    props: [{ x: 260, kind: 'crate' }, { x: 700, kind: 'barrel' }, { x: 1100, kind: 'crate' }, { x: 1500, kind: 'barrel' }],
+    props: [{ x: 290, kind: 'crate' }, { x: 700, kind: 'barrel' }, { x: 1120, kind: 'crate' }, { x: 1600, kind: 'barrel' }],
   },
   {
-    name: 'KENTUCKY BACKROADS', sub: 'THE LONG WAY HOME', bg: 'night', length: 1900, boss: 'bargeboss', music: { root: 50, tempo: 156, mode: 'phrygian' },
+    name: 'FORT CINCINNATI', sub: 'THEY CALLED THE ARMY', bg: 'base', length: 2300, boss: 'boss_general', music: { root: 50, tempo: 156, mode: 'phrygian' },
+    diff: { hp: 1.75, spd: 1.22, dmg: 1.4, cd: 0.78, atk: 3 },
     events: [
-      { at: 170, wave: cat(w('hunter', R, 2), w('cop', L, 1)) },
-      { at: 540, wave: cat(w('cop', R, 2), w('sailor', L, 2), w('catcher', R, 1)) },
-      { at: 940, wave: cat(w('hunter', R, 2), w('guard', L, 3)) },
-      { at: 1380, wave: cat(w('cop', R, 3), w('hunter', L, 2)) },
+      { at: 170, wave: cat(w('soldier_shield', R, 2), w('soldier_net', L, 1)) },
+      { at: 500, wave: cat(w('soldier_baton', R, 2), w('soldier_net', L, 2)) },
+      { at: 840, wave: cat(w('soldier_shield', R, 2), w('soldier_baton', L, 2), w('agent_net', R, 1)) },
+      { at: 1170, wave: cat(w('soldier_net', R, 3), w('soldier_baton', L, 2)) },
+      { at: 1500, wave: cat(w('soldier_shield', R, 2), w('soldier_net', L, 2), w('soldier_baton', R, 2)) },
+      { at: 1800, wave: cat(w('soldier_baton', R, 3), w('soldier_shield', L, 2), w('soldier_net', R, 2)) },
     ],
-    props: [{ x: 300, kind: 'barrel' }, { x: 760, kind: 'crate' }, { x: 1150, kind: 'barrel' }, { x: 1600, kind: 'crate' }],
+    props: [{ x: 300, kind: 'barrel' }, { x: 760, kind: 'crate' }, { x: 1180, kind: 'barrel' }, { x: 1700, kind: 'crate' }],
   },
   {
-    name: 'THE JUNGLE', sub: 'HOME AT LAST', bg: 'jungle', length: 2000, boss: 'safarihunter', music: { root: 48, tempo: 164, mode: 'minor' },
+    name: 'THE JUNGLE', sub: 'HOME AT LAST', bg: 'jungle', length: 2600, boss: 'boss_baron', music: { root: 48, tempo: 164, mode: 'minor' },
+    diff: { hp: 2.1, spd: 1.3, dmg: 1.6, cd: 0.7, atk: 4 },
     events: [
-      { at: 160, wave: cat(w('hunter', R, 2), w('guard', L, 2)) },
-      { at: 560, wave: cat(w('hunter', R, 3), w('cop', L, 2)) },
-      { at: 980, wave: cat(w('sailor', R, 2), w('hunter', L, 2), w('cop', R, 2)) },
-      { at: 1450, wave: cat(w('hunter', R, 3), w('cop', L, 3)) },
+      { at: 160, wave: cat(w('soldier_baton', R, 2), w('agent_kick', L, 2), w('keeper_dart', R, 1)) },
+      { at: 500, wave: cat(w('cop_shield', R, 2), w('soldier_net', L, 2), w('agent_case', R, 1)) },
+      { at: 840, wave: cat(w('agent_kick', R, 3), w('cop_taser', L, 2), w('soldier_shield', R, 1)) },
+      { at: 1170, wave: cat(w('soldier_baton', R, 2), w('agent_net', L, 2), w('cop_baton', R, 2)) },
+      { at: 1500, wave: cat(w('soldier_shield', R, 2), w('agent_case', L, 2), w('cop_taser', R, 2), w('keeper_stun', L, 1)) },
+      { at: 1830, wave: cat(w('soldier_net', R, 2), w('agent_kick', L, 3), w('soldier_baton', R, 2)) },
+      { at: 2150, wave: cat(w('soldier_baton', R, 3), w('agent_case', L, 2), w('cop_shield', R, 2), w('soldier_net', L, 1)) },
     ],
-    props: [{ x: 320, kind: 'crate' }, { x: 800, kind: 'barrel' }, { x: 1200, kind: 'crate' }, { x: 1700, kind: 'barrel' }],
+    props: [{ x: 320, kind: 'crate' }, { x: 800, kind: 'barrel' }, { x: 1250, kind: 'crate' }, { x: 1750, kind: 'barrel' }, { x: 2200, kind: 'crate' }],
   },
 ];
