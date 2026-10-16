@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Harambe Escape — Jungle Brawl</title>
+<meta name="description" content="Single-player arcade beat-'em-up. Alternate universe: Harambe escapes the Cincinnati Zoo and brawls his way to the jungle.">
+<meta name="theme-color" content="#0a0a12">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="960" height="540" aria-label="Harambe Escape game"></canvas>
+  <div id="touch" aria-hidden="true">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="btns">
+      <button data-btn="special" class="b sp">SP</button>
+      <button data-btn="heavy" class="b hv">HVY</button>
+      <button data-btn="atk" class="b at">ATK</button>
+      <button data-btn="jump" class="b jp">JUMP</button>
+    </div>
+    <button data-btn="start" class="b pause">❚❚</button>
+  </div>
+</div>
+<p id="help">Move: WASD / arrows · Light: J · Heavy: K · Jump: Space · Special: L (costs a little health) · Pause: Enter · Mute: M</p>
+<noscript>This game needs JavaScript.</noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
