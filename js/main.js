@@ -20,12 +20,12 @@ const G = {
   mode: 'title', t: 0, mt: 0, stage: 0, cam: 0, lock: null, evIdx: 0, ents: [], props: [], items: [], proj: [], fx: [], texts: [],
   lane: { top: 124, bot: 172 }, p: null, score: 0, hiscore: (() => { try { return +(localStorage.getItem('harambe-hi') || 0); } catch (_) { return 0; } })(), combo: 0, comboT: 0, shake: 0, flash: 0, hitstop: 0, goT: 0, boss: null, paused: false, god: qs.has('god'),
 };
-window.__game = G; window.__stages = STAGES; // QA hooks
+window.__input = input; window.__game = G; window.__stages = STAGES; // QA hooks
 
 function newPlayer() {
   return { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, vx: 0, vy: 0, vz: 0, face: 1, hp: 100, max: 100, lives: 3, state: 'idle', t: 0, st: 0, n: 0, comboT: 0, buf: false, inv: 0, hit: new Set(), w: 16 };
 }
-function setMode(m) { G.mode = m; G.mt = 0; }
+function setMode(m) { input.releaseTouch(); G.mode = m; G.mt = 0; }
 
 // ---------- save / menus ----------
 function checkpoint() { if (G.p && !qs.has('nosave')) writeSave(makeSave(G.stage, G.p, G.score, STAGES.length)); }
@@ -48,8 +48,8 @@ function mkMenu(kind, items, back) {
   for (const it of items) { const h = it.tall ? 24 : 18; it.r = { x: (W - w) / 2, y, w, h }; y += h + gap; }
   return { kind, items, sel: kind === 'confirm' ? 0 : 0, back };
 }
-function resume() { G.paused = false; G.menu = null; audio.play('s', STAGES[G.stage].music); }
-function openPause() { G.paused = true; audio.stop(); checkpoint(); input.anyPress(); G.menu = pauseMenu(); }
+function resume() { input.releaseTouch(); G.paused = false; G.menu = null; audio.play('s', STAGES[G.stage].music); }
+function openPause() { input.releaseTouch(); G.paused = true; audio.stop(); checkpoint(); input.anyPress(); G.menu = pauseMenu(); }
 function menuAct(m, i) { audio.sfx('select'); m.items[i].act(); input.anyPress(); }
 function menuStep() {
   const m = G.menu; if (!m) return;
@@ -87,12 +87,13 @@ function menuPointer(e) {
 
 // ---------- stage setup ----------
 function startStage(i, keepPlayer = true) {
+  input.releaseTouch();
   const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0;
   G.props = st.props.map(p => ({ x: p.x, y: G.lane.top + 4 + ((p.x * 7) % Math.max(8, G.lane.bot - G.lane.top - 10)), kind: p.kind, hp: 2, flash: 0 }));
   if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
   checkpoint(); audio.play('stage' + i, st.music); setMode('stageintro');
 }
-function startCutscene(idx) { G.cs = { idx, panel: 0, t: 0, done: false }; audio.play('cs' + idx, CUTSCENES[idx].music); setMode('cutscene'); }
+function startCutscene(idx) { input.releaseTouch(); G.cs = { idx, panel: 0, t: 0, done: false }; audio.play('cs' + idx, CUTSCENES[idx].music); setMode('cutscene'); }
 function afterCutscene() { if (G.cs.idx + 1 < STAGES.length) startStage(G.cs.idx + 1); else { clearSave(); audio.play('title', { root: 55, tempo: 110, mode: 'dorian' }); setMode('outro'); } }
 window.__cutscene = startCutscene; // QA hook
 function newGame() { G.score = 0; G.p = newPlayer(); startStage(+qs.get('stage') || 0, true); if (qs.get('stage')) G.p.lives = 3; }
