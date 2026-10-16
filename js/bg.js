@@ -34,7 +34,7 @@ function plate(ctx, im, kind, cam) {
 /** Haze strip that the neighbouring (old) plate fades into just outside an AI plate's edge: the plate's own per-row edge colour,
  * alpha ramping 0 -> HAZE_A towards the edge. The plate itself ramps out of the same colour (baked in), so a slide goes
  * old plate -> haze -> new plate with no two scenes overlapping (no ghosting). */
-const HZ = 30, HAZE_A = 0.85, hazeCache = {};
+const HZ = 0, HAZE_A = 0.85, hazeCache = {};
 function hazeStrip(kind, name, side, from = side) { // side = where the strip sits, from = which plate edge's colours it takes (differs when the plate is mirrored)
   const key = kind + name + side + from; if (hazeCache[key]) return hazeCache[key];
   const rows = A.bgMeta[kind].haze[name][from], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;
@@ -51,14 +51,14 @@ function featured(ctx, L, kind, stops, cam) {
   if (!L.x) return;
   const scr = SCREENS[kind].screens;
   for (let i = 0; i < stops.length; i++) {
-    const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W + HZ || x + TILE_W + HZ < 0) continue;
+    const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W || x + TILE_W + 16 < 0) continue;
     const xr = Math.round(x * S) / S;
+    // stretch the plate (<=3%) to meet the next stop's plate so no sliver of the stage plate shows between two cuts
+    const gap = i < stops.length - 1 ? stops[i + 1] - stops[i] : TILE_W, pw = gap >= TILE_W && gap <= TILE_W + 16 ? gap : TILE_W;
     const fl = !!scr[i].flip; // mirrored reuse of a plate: its left edge is the plate's right edge
-    // haze only where the neighbouring stop is a full screen away; closer stops would show the strip as a hard fog wall
-    if (i === 0 || stops[i] - stops[i - 1] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'l', fl ? 'r' : 'l'), xr - HZ, 0);
-    if (i === stops.length - 1 || stops[i + 1] - stops[i] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'r', fl ? 'l' : 'r'), xr + TILE_W, 0);
-    if (fl) { ctx.save(); ctx.translate(xr + TILE_W, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, TILE_W, 180); ctx.restore(); }
-    else ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
+    // hard cut at the screen boundary (no haze strip): the plate's own edge is crisp
+    if (fl) { ctx.save(); ctx.translate(xr + pw, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, pw, 180); ctx.restore(); }
+    else ctx.drawImage(L.x[p], xr, 0, pw, 180);
   }
 }
 const stopsCache = new WeakMap();
