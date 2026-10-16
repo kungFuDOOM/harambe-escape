@@ -54,7 +54,9 @@ function featured(ctx, L, kind, stops, cam) {
     const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W + HZ || x + TILE_W + HZ < 0) continue;
     const xr = Math.round(x * S) / S;
     const fl = !!scr[i].flip; // mirrored reuse of a plate: its left edge is the plate's right edge
-    ctx.drawImage(hazeStrip(kind, p, 'l', fl ? 'r' : 'l'), xr - HZ, 0); ctx.drawImage(hazeStrip(kind, p, 'r', fl ? 'l' : 'r'), xr + TILE_W, 0);
+    // haze only where the neighbouring stop is a full screen away; closer stops would show the strip as a hard fog wall
+    if (i === 0 || stops[i] - stops[i - 1] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'l', fl ? 'r' : 'l'), xr - HZ, 0);
+    if (i === stops.length - 1 || stops[i + 1] - stops[i] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'r', fl ? 'l' : 'r'), xr + TILE_W, 0);
     if (fl) { ctx.save(); ctx.translate(xr + TILE_W, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, TILE_W, 180); ctx.restore(); }
     else ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
   }

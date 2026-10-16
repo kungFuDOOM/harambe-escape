@@ -4,7 +4,7 @@ import asyncio, sys, os, json
 from playwright.async_api import async_playwright
 from PIL import Image
 OUT = sys.argv[1]; URL = sys.argv[2]; os.makedirs(OUT, exist_ok=True)
-FEAT = {0: [2, 4], 1: [2, 4], 2: [4, 5], 3: [4], 4: [4, 6]}
+FEAT = {0: [0, 1, 2, 3], 1: [0, 1, 2, 4, 5], 2: [0, 1, 6, 7], 3: [0, 1, 2, 6], 4: [0, 1, 7]}  # edge crossings of a sample of plates per stage (pairs cover every hop)
 async def main():
     res = {}
     async with async_playwright() as pw:

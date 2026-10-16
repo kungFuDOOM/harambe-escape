@@ -12,6 +12,9 @@ let g; // current layer ctx (scaled S)
 const R = (x, y, w, h, c) => { g.fillStyle = c; const X = q(x), Y = q(y); g.fillRect(X, Y, q(x + w) - X, q(y + h) - Y); };
 const box = (x, y, w, h, c, edge = '#10121a') => { R(x - 1, y - 1, w + 2, h + 2, edge); R(x, y, w, h, c); R(x, y, w, 1, sh(c, 1.25)); R(x, y + h - 1, w, 1, sh(c, 0.7)); };
 const blob = (x, y, rx, ry, c) => { g.fillStyle = c; g.beginPath(); g.ellipse(q(x), q(y), rx, ry, 0, 0, 7); g.fill(); };
+/** Smooth neon lettering (canvas font, not the 6px bitmap font scaled up): glow pass + bright core. */
+function neon(t, x, y, px, core, glow) { g.save(); g.font = `900 ${px}px Impact, "Arial Black", "Helvetica Neue", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  g.shadowColor = glow; g.shadowBlur = 5; g.lineWidth = 2.2; g.strokeStyle = glow; g.strokeText(t, x, y); g.shadowBlur = 0; g.fillStyle = core; g.fillText(t, x, y); g.restore(); }
 const text = (t, x, y, col) => drawText(g, t, x, y, col, 8, 'center', '#000');
 
 const LM = {
@@ -81,17 +84,18 @@ function tinted(name, col, face) { // multiply-tint the whole sprite, or only it
 }
 /** Blit sprite `name`: mode 'ctr' (x = centre) or 'left' (x = left edge); feet on gy (sunk dy px); `top` fixes the y instead (hanging props). */
 function spr(name, x, gy, o = {}) {
-  const s = A.sp[name]; if (!s) return null; const [sx, sy, w, h] = s.r, lw = w / S, lh = h / S;
+  const s = A.sp[name]; if (!s) return null; const [sx, sy, w, h] = s.r, lw = w / S * (o.sw || o.sc || 1), lh = h / S * (o.sc || 1);
   const dx = o.mode === 'left' ? x : x - lw / 2, dy = o.top != null ? o.top : gy + (o.dy == null ? 1 : o.dy) - lh;
   const src = o.tint ? tinted(name, o.tint, o.face) : s.im, ox = o.tint ? 0 : sx, oy = o.tint ? 0 : sy;
-  g.drawImage(src, ox, oy, w, h, q(dx), q(dy), lw, lh); return { x: dx, y: dy, w: lw, h: lh, s };
+  g.drawImage(src, ox, oy, w, h, q(dx), q(dy), lw, lh); return { x: dx, y: dy, w: lw, h: lh, s, sc: o.sc || 1 };
 }
 const faceOf = s => s.r.length >= 8 ? [s.r[4], s.r[5], s.r[6], s.r[7]] : null;
 const pick = (x, n) => Math.abs(Math.round(x * 7 + n)) % n;
 const SPRL = ['', 'a', 'b', 'c'];
 const SP = {
   sign(x, gy, t, bg, fg) { const tw = t.length * 6, nm = tw <= 26 ? 'sign_s' : tw <= 48 ? 'sign_m' : 'sign_l', s0 = A.sp[nm]; if (!s0) return false; const f = faceOf(s0);
-    const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f }); const cx = r.x + (f[0] + f[2] / 2) / S, cy = r.y + (f[1] + f[3] / 2) / S; text(t, cx, cy + 3, fg); return true; },
+    const sc = Math.max(0.55, Math.min(1, (tw + 12) / (f[2] / S))); // board only as wide as its lettering needs
+    const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f, sc }); const cx = r.x + (f[0] + f[2] / 2) / S * sc, cy = r.y + (f[1] + f[3] / 2) / S * sc; text(t, cx, cy + 3, fg); return true; },
   hsign(x, gy, t, bg, fg) { const s0 = A.sp.hsign; if (!s0) return false; const f = faceOf(s0), top = gy - 50 - f[1] / S; // board top sits at gate height (gy-50)
     const r = spr('hsign', x, gy, { top, tint: bg, face: f }); text(t, r.x + (f[0] + f[2] / 2) / S, r.y + (f[1] + f[3] / 2) / S + 3, fg); return true; },
   bush(x, gy, w, c) { const dark = hx(c).reduce((a, b) => a + b, 0) < 150; return !!spr('bush_' + 'abc'[pick(x, 3)], x, gy, { tint: dark ? '#7d8fa0' : null, dy: 2 }); },
@@ -105,8 +109,8 @@ const SP = {
   pipe(x, gy) { return !!spr('pipe', x + 2, gy, { dy: 0 }); },
   planter(x, gy) { return !!spr('planter', x, gy, { mode: 'left', dy: 1 }); },
   diner(x, gy) { const s0 = A.sp.diner; if (!s0) return false; const f = faceOf(s0), r = spr('diner', x, gy, { mode: 'left', dy: 1 }); const cx = r.x + (f[0] + f[2] / 2) / S, cy = r.y + (f[1] + f[3] / 2) / S;
-    drawText(g, 'DINER', cx, cy + 6, '#ff9a9a', 14, 'center', '#8a0a14'); return true; },
-  girders(x, gy) { return !!spr('girders', x, gy, { mode: 'left', top: 0 }); },
+    neon('DINER', cx, cy + 5, 17, '#ffb0b0', '#ff3a4a'); return true; },
+  girders(x, gy) { return !!spr('girders', x, gy, { mode: 'left', top: -36 }); },
   barrier(x, gy) { return !!spr('barrier', x, gy, { mode: 'left', dy: 1 }); },
   plant(x, gy) { return !!spr('plant', x, gy, { dy: 1 }); },
   seal(x, gy) { return !!spr('seal', x, gy, { top: 27 }); },
@@ -117,8 +121,8 @@ const SP = {
   table(x, gy) { return !!spr('table', x, gy, { mode: 'left', dy: 1 }); },
   flag(x, gy) { return !!spr('flag', x + 6, gy, { dy: 1 }); },
   cart(x, gy) { return !!spr('cart', x, gy, { dy: 1 }); },
-  elevator(x, gy) { const r = spr('elevator', x, gy, { mode: 'left', dy: 1 }); if (!r) return false; R(r.x + r.w * 0.5 - 4, r.y + 3, 8, 2, '#ff5a3a'); return true; },
-  curtain(x, gy) { return !!spr('curtain', x + 16, gy, { top: 4 }); },
+  elevator(x, gy) { const r = spr('elevator', x, gy, { mode: 'left', dy: 1, sw: 0.72 }); if (!r) return false; R(r.x + r.w * 0.5 - 3, r.y + 3, 6, 2, '#ff5a3a'); return true; },
+  curtain(x, gy) { return !!spr('curtain', x + 12, gy, { top: 4, sw: 0.55 }); },
   gatepost(x, gy) { return !!spr('gatepost', x, gy, { dy: 1 }); },
   sandbags(x, gy, n) { return !!spr(n >= 4 ? 'sandbags4' : 'sandbags3', x, gy, { mode: 'left', dy: 1 }); },
   jeep(x, gy) { return !!spr('jeep', x, gy, { mode: 'left', dy: 2 }); },
