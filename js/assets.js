@@ -1,7 +1,7 @@
 // Asset loader. Characters and stage backgrounds are AI-generated 16-bit art, sliced by tools/ai-art (atlas.json, bg/bg.json).
 // The props atlas (crates, bananas, sparks, kid) and pixel font still come from tools/art.
 const img = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('asset ' + src)); i.src = src; });
-export const A = { atlas: null, sheets: {}, flash: {}, props: null, propsImg: null, propsAi: null, propsAiImg: null, font: null, bgMeta: null, bg: {}, icon: null, ready: false };
+export const A = { atlas: null, sheets: {}, flash: {}, props: null, propsImg: null, propsAi: null, propsAiImg: null, font: null, sp: {}, bgMeta: null, bg: {}, icon: null, ready: false };
 
 function whiteCopy(im) { // white silhouette of a sheet, used for hit flashes
   const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
@@ -20,5 +20,7 @@ export async function loadAssets() {
     for (const x of m.extra || []) jobs.push(img(`assets/bg/x_${x}.webp`).then(i => (A.bg[k].x = A.bg[k].x || {})[x] = i));
     if (m.fg) jobs.push(img(`assets/bg/${k}_fg.webp`).then(i => A.bg[k].fg = i));
   }
+  // painted stage props (tools/ai-art/build_stageprops.py): per-group atlas + rects. Optional: a missing atlas falls back to the code drawing.
+  for (const gname of ['common', 'zoo', 'street', 'office', 'base', 'jungle']) jobs.push(Promise.all([fetch(`assets/props/${gname}.json`).then(r => r.json()), img(`assets/props/${gname}.webp`)]).then(([m, im]) => { for (const k of Object.keys(m)) A.sp[k] = { im, r: m[k] }; }).catch(() => {}));
   await Promise.all(jobs); A.ready = true;
 }

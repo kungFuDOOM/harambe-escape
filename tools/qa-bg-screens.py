@@ -2,7 +2,7 @@
 import asyncio, os, sys, json, subprocess
 from playwright.async_api import async_playwright
 from PIL import Image
-OUT = sys.argv[1] if len(sys.argv) > 1 else '/workspace/shots-harambe-v15'; os.makedirs(OUT, exist_ok=True)
+OUT = sys.argv[1] if len(sys.argv) > 1 else '/workspace/shots-harambe-v20'; os.makedirs(OUT, exist_ok=True)
 URL = sys.argv[2] if len(sys.argv) > 2 else 'http://localhost:8115'
 NAMES = ['zoo', 'street', 'office', 'base', 'jungle']
 async def main():
@@ -10,7 +10,7 @@ async def main():
     async with async_playwright() as pw:
         b = await pw.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
         for si, nm in enumerate(NAMES):
-            ctx = await b.new_context(viewport={'width': 844, 'height': 390}, has_touch=True, is_mobile=True, device_scale_factor=1)
+            ctx = await b.new_context(viewport={'width': 844, 'height': 390}, has_touch=True, is_mobile=True, device_scale_factor=int(os.environ.get('DPR','1')))
             pg = await ctx.new_page(); errs = []
             pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
             await pg.goto(f'{URL}/?skipintro&god&debugstart&nosave&stage={si}'); await pg.wait_for_function('window.__game&&window.__game.mode')

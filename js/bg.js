@@ -35,9 +35,9 @@ function plate(ctx, im, kind, cam) {
  * alpha ramping 0 -> HAZE_A towards the edge. The plate itself ramps out of the same colour (baked in), so a slide goes
  * old plate -> haze -> new plate with no two scenes overlapping (no ghosting). */
 const HZ = 30, HAZE_A = 0.85, hazeCache = {};
-function hazeStrip(kind, name, side) {
-  const key = kind + name + side; if (hazeCache[key]) return hazeCache[key];
-  const rows = A.bgMeta[kind].haze[name][side], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;
+function hazeStrip(kind, name, side, from = side) { // side = where the strip sits, from = which plate edge's colours it takes (differs when the plate is mirrored)
+  const key = kind + name + side + from; if (hazeCache[key]) return hazeCache[key];
+  const rows = A.bgMeta[kind].haze[name][from], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;
   const tc = t.getContext('2d'), id = tc.createImageData(1, n); rows.forEach((c, i) => { id.data.set([c[0], c[1], c[2], 255], i * 4); }); tc.putImageData(id, 0, 0);
   const c = document.createElement('canvas'); c.width = HZ; c.height = 180; const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(t, 0, 0, 1, n, 0, 0, HZ, 180);
   const gr = g.createLinearGradient(0, 0, HZ, 0), e = side === 'l' ? 1 : 0; // alpha is highest at the plate edge
@@ -53,8 +53,10 @@ function featured(ctx, L, kind, stops, cam) {
   for (let i = 0; i < stops.length; i++) {
     const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W + HZ || x + TILE_W + HZ < 0) continue;
     const xr = Math.round(x * S) / S;
-    ctx.drawImage(hazeStrip(kind, p, 'l'), xr - HZ, 0); ctx.drawImage(hazeStrip(kind, p, 'r'), xr + TILE_W, 0);
-    ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
+    const fl = !!scr[i].flip; // mirrored reuse of a plate: its left edge is the plate's right edge
+    ctx.drawImage(hazeStrip(kind, p, 'l', fl ? 'r' : 'l'), xr - HZ, 0); ctx.drawImage(hazeStrip(kind, p, 'r', fl ? 'l' : 'r'), xr + TILE_W, 0);
+    if (fl) { ctx.save(); ctx.translate(xr + TILE_W, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, TILE_W, 180); ctx.restore(); }
+    else ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
   }
 }
 const stopsCache = new WeakMap();
