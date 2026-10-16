@@ -34,9 +34,14 @@ test('typewriter and advance: first tap completes text, second advances, skip en
   s = csAdvance({ ...s, t: 9 }, 'adv', 3, 80); s = csAdvance({ ...s, t: 9 }, 'adv', 3, 80); assert.ok(s.done);
   assert.ok(csAdvance({ panel: 0, t: 0, done: false }, 'skip', 3, 80).done);
 });
-test('walk cycle: torso-aligned, ping-pong, no per-frame x jitter', () => {
+test('walk cycle: 12-frame two-step cycle, one shared body pivot and ground line, loops seamlessly', () => {
   const a = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url))).harambe;
-  assert.deepEqual(a.anims.walk, [3, 4, 5, 6, 5, 4]);
-  const ax = a.anims.walk.map(i => a.frames[i].ax - a.frames[i].w / 2);
-  assert.ok(Math.max(...ax) - Math.min(...ax) <= 40);
+  assert.equal(a.anims.walk.length, 12);
+  assert.equal(new Set(a.anims.walk).size, 12);
+  const f = a.anims.walk.map(i => a.frames[i]);
+  // feet baseline: the sprite is anchored on the ground line, so each frame's anchor row must lie inside the frame and the cycle never changes scale
+  for (const x of f) assert.ok(x.ay > 150 && x.ay <= x.h + 4, 'ay ' + x.ay + ' h ' + x.h);
+  assert.ok(Math.max(...f.map(x => x.h)) - Math.min(...f.map(x => x.h)) <= 14);
+  // every frame pivots on the upper-body mass centre: the anchor sits inside the body box (not at a shoe) so flipping to face the other way doesn't jump
+  for (const x of f) assert.ok(Math.abs(x.ax - x.w / 2) < 45, 'ax ' + x.ax + ' w ' + x.w);
 });

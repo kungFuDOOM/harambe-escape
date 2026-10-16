@@ -151,7 +151,7 @@ function updatePlayer(dt) {
   if (free) {
     const mx = ax.x * 82, my = ax.y * 52;
     const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
-    if (ax.x) p.face = ax.x; p.state = (ax.x || ax.y) ? 'walk' : 'idle';
+    if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') p.wd = 0; // every walk starts on the contact pose, never mid-stride
   }
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
   if (input.take('atk')) {
@@ -284,7 +284,7 @@ function updatePlaying(dt) {
   for (const r of G.rubble || []) r.t += dt; G.rubble = (G.rubble || []).filter(r => r.t < 1.6);
   // wave clear
   if (G.lock !== null && !G.ents.some(e => e.state !== 'dead')) {
-    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.stage + 1 < STAGES.length) writeSave(makeSave(G.stage + 1, G.p, G.score, STAGES.length)); else clearSave(); setMode('stageclear'); return; }
+    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.p.state === 'walk') G.p.state = 'idle'; if (G.stage + 1 < STAGES.length) writeSave(makeSave(G.stage + 1, G.p, G.score, STAGES.length)); else clearSave(); setMode('stageclear'); return; }
     G.lock = null; G.goT = 3; audio.sfx('go');
   }
   if (G.goT > 0) G.goT -= dt; if (G.lastHitT > 0) G.lastHitT -= dt;
@@ -333,7 +333,7 @@ function drawHUD() {
 function drawWorld() {
   const sx = G.shake ? (Math.random() - 0.5) * G.shake * 2 : 0, sy = G.shake ? (Math.random() - 0.5) * G.shake : 0;
   ctx.save(); ctx.translate(Math.round(sx), Math.round(sy));
-  const cam = Math.round(G.cam);
+  const cam = Math.round(G.cam), camP = Math.round(G.cam * 3) / 3; // the world scrolls in whole px; the hero uses a device-px camera so he doesn't wobble +-0.5px against the scroll
   drawBG(ctx, STAGES[G.stage].bg, cam, G.t);
   const list = [];
   for (const pr of G.props) list.push({ y: pr.y, f: () => { shadow(ctx, pr.x - cam, pr.y, 18); drawProp(ctx, { ...pr, x: pr.x - cam }); } });
@@ -342,7 +342,7 @@ function drawWorld() {
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
     drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
   const p = G.p; list.push({ y: p.y, f: () => { shadow(ctx, p.x - cam, p.y, 44); if (p.inv > 0 && Math.floor(G.t * 20) % 2 && p.state !== 'special') return;
-    drawHarambe(ctx, { x: p.x - cam, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
+    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const n of G.proj) drawProj(ctx, { ...n, x: n.x - cam }, G.t);
   for (const f of G.fx) { const k = f.t / 0.3, x = f.x - cam; if (f.ring) { ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, f.y, 10 + k * 56, 4 + k * 18, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = `rgba(255,200,60,${1 - k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, f.y, 6 + k * 50, 2 + k * 15, 0, 0, 7); ctx.stroke(); } else if (f.dust) drawDust(ctx, x, f.y, k); else drawSpark(ctx, x, f.y - 32, k, f.big); }

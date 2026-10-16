@@ -36,14 +36,14 @@ function sprWhite(ctx, name, x, y) {
 
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
-export const WALK_PX = 7; // ground distance (logic px) per walk frame
+export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0, bob = 0;
   switch (state) {
-    case 'walk': { // ping-pong stride (6 steps), phase driven by distance walked so feet never slide; torso-aligned frames + body bob
-      anim = 'walk'; const ph = (s.wd != null ? s.wd / WALK_PX : t * 9) % 6; i = ph; const k = Math.floor(ph < 3.5 ? ph : 6 - ph); bob = (k === 1 || k === 2) ? -1 : 0; break; }
+    case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
+      anim = 'walk'; i = ((s.wd != null ? s.wd / WALK_PX : t * 82 / WALK_PX) % 12 + 12) % 12; break; }
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
