@@ -18,6 +18,10 @@ function neon(t, x, y, px, core, glow) { g.save(); g.font = `900 ${px}px Impact,
 const text = (t, x, y, col) => drawText(g, t, x, y, col, 8, 'center', '#000');
 
 const LM = {
+  /** Lettering on a painted sign board of the plate (x = centre from the screen's left edge, y = text centre; crisp canvas text, no bitmap font). */
+  ptext(x, gy, y, t, kind) { if (kind === 'neon') { neon(t, x, y + 3.6, 10.5, '#ffc0c0', '#ff3a4a'); return; }
+    g.save(); g.font = '700 8px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.letterSpacing = '1.5px';
+    g.fillStyle = 'rgba(8,10,16,0.75)'; g.fillText(t, x + 0.4, y + 3.4); g.fillStyle = 'rgba(214,206,170,0.92)'; g.fillText(t, x, y + 2.8); g.restore(); },
   sign(x, gy, t, bg, fg) { const w = t.length * 6 + 10; R(x - w / 2 + 3, gy - 14, 2, 14, '#2a2418'); R(x + w / 2 - 5, gy - 14, 2, 14, '#2a2418'); box(x - w / 2, gy - 30, w, 16, bg); R(x - w / 2 + 2, gy - 28, w - 4, 1, sh(fg, 0.55)); text(t, x, gy - 16, fg); },
   hsign(x, gy, t, bg, fg) { const w = t.length * 6 + 12, y = gy - 50; R(x - w / 2, y - 8, w, 2, '#1a1a20'); R(x - w / 2 + 4, y - 6, 1, 6, '#6a6a72'); R(x + w / 2 - 5, y - 6, 1, 6, '#6a6a72'); box(x - w / 2, y, w, 16, bg); R(x - w / 2 + 2, y + 2, w - 4, 1, sh(fg, 0.55)); text(t, x, y + 14, fg); },
   bush(x, gy, w, c) { for (let i = 0; i < 4; i++) blob(x + (i - 1.5) * w / 4, gy - 5 - (i % 2) * 3, w / 3.2, 8, '#0c1a10'); for (let i = 0; i < 4; i++) { blob(x + (i - 1.5) * w / 4, gy - 6 - (i % 2) * 3, w / 3.4, 7, c); blob(x + (i - 1.5) * w / 4 - 2, gy - 9 - (i % 2) * 3, w / 7, 3, sh(c, 1.5)); } },
