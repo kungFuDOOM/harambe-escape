@@ -6,6 +6,8 @@ import { drawBG, laneOf } from './bg.js';
 import { loadAssets, A } from './assets.js';
 import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
 import { INTRO, drawOutro } from './scenes.js';
+import { drawCutscene, stepCutscene } from './cutscene.js';
+import { CUTSCENES } from './story.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const SCALE = cv.width / W; // canvas is 3x the 320x180 logic grid; art is baked at that resolution
@@ -31,6 +33,9 @@ function startStage(i, keepPlayer = true) {
   if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
   audio.play('stage' + i, st.music); setMode('stageintro');
 }
+function startCutscene(idx) { G.cs = { idx, panel: 0, t: 0, done: false }; audio.play('cs' + idx, CUTSCENES[idx].music); setMode('cutscene'); }
+function afterCutscene() { if (G.cs.idx + 1 < STAGES.length) startStage(G.cs.idx + 1); else { audio.play('title', { root: 55, tempo: 110, mode: 'dorian' }); setMode('outro'); } }
+window.__cutscene = startCutscene; // QA hook
 function newGame() { G.score = 0; G.p = newPlayer(); startStage(+qs.get('stage') || 0, true); if (qs.get('stage')) G.p.lives = 3; }
 
 // ---------- entities ----------
@@ -86,7 +91,7 @@ function updatePlayer(dt) {
   const free = p.state === 'idle' || p.state === 'walk';
   if (free) {
     const mx = ax.x * 82, my = ax.y * 52;
-    p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot);
+    const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
     if (ax.x) p.face = ax.x; p.state = (ax.x || ax.y) ? 'walk' : 'idle';
   }
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
@@ -278,7 +283,7 @@ function drawWorld() {
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
     drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
   const p = G.p; list.push({ y: p.y, f: () => { shadow(ctx, p.x - cam, p.y, 44); if (p.inv > 0 && Math.floor(G.t * 20) % 2 && p.state !== 'special') return;
-    drawHarambe(ctx, { x: p.x - cam, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
+    drawHarambe(ctx, { x: p.x - cam, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const n of G.proj) drawProj(ctx, { ...n, x: n.x - cam }, G.t);
   for (const f of G.fx) { const k = f.t / 0.3, x = f.x - cam; if (f.ring) { ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, f.y, 10 + k * 56, 4 + k * 18, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = `rgba(255,200,60,${1 - k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, f.y, 6 + k * 50, 2 + k * 15, 0, 0, 7); ctx.stroke(); } else if (f.dust) drawDust(ctx, x, f.y, k); else drawSpark(ctx, x, f.y - 32, k, f.big); }
@@ -311,7 +316,7 @@ function stageIntro() {
   drawLogo(ctx, 'STAGE ' + (G.stage + 1), W / 2 + (1 - k) * 200, 12, 3, ['#fffbd0', '#ffe040', '#ff9a14', '#d85a00'], '#4a1000');
   drawText(ctx, st.name, W / 2 - (1 - k) * 200, 70, '#fff', 12, 'center');
   drawText(ctx, '"' + st.sub + '"', W / 2, 88, '#8fe0a0', 9, 'center');
-  shadow(ctx, ((G.mt * 90) % 380) - 30, 172, 44); drawHarambe(ctx, { x: ((G.mt * 90) % 380) - 30, y: 172, face: 1, t: G.mt, state: 'walk' });
+  shadow(ctx, ((G.mt * 90) % 380) - 30, 172, 44); drawHarambe(ctx, { x: ((G.mt * 90) % 380) - 30, y: 172, face: 1, t: G.mt, wd: G.mt * 90, state: 'walk' });
   drawText(ctx, 'LIVES ' + G.p.lives + '   SCORE ' + Math.round(G.score), W / 2, 106, '#99a', 7, 'center');
 }
 
@@ -334,7 +339,8 @@ function step(dt) {
       if (G.paused) return;
       if (G.hitstop > 0) { G.hitstop -= dt; return; }
       updatePlaying(dt); break;
-    case 'stageclear': G.clearT = (G.clearT || 0) + dt; if (G.clearT > 3.2 && (input.take('start') || input.take('atk') || G.clearT > 6)) { if (G.stage + 1 < STAGES.length) startStage(G.stage + 1); else { audio.play('title', { root: 55, tempo: 110, mode: 'dorian' }); setMode('outro'); } } break;
+    case 'stageclear': G.clearT = (G.clearT || 0) + dt; if (G.clearT > 3.2 && (input.take('start') || input.take('atk') || G.clearT > 6)) { startCutscene(G.stage); } break;
+    case 'cutscene': if (stepCutscene(G.cs, dt, input)) afterCutscene(); break;
     case 'outro': if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); setMode('title'); audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); } break;
     case 'gameover': if (G.mt > 1 && (input.take('start') || input.take('atk'))) { saveHi(); G.score = 0; G.p = newPlayer(); startStage(G.stage, true); } break;
   }
@@ -342,7 +348,7 @@ function step(dt) {
 }
 function saveHi() { if (G.score > G.hiscore) { G.hiscore = Math.round(G.score); localStorage.setItem('harambe-hi', G.hiscore); } }
 function render() {
-  document.body.classList.toggle('playing', G.mode === 'play');
+  document.body.classList.toggle('playing', G.mode === 'play'); document.body.classList.toggle('cutscene', G.mode === 'cutscene');
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
   switch (G.mode) {
@@ -354,6 +360,7 @@ function render() {
       if (G.mode === 'stageclear') centerBox([['STAGE CLEAR!', '#ffe03a', 14], [STAGES[G.stage].name + ' cleared', '#fff', 8], ['SCORE ' + Math.round(G.score), '#8af', 8], ...(G.clearT > 3.2 ? [['ENTER / ATK to continue', '#fff', 7]] : [])], 60);
       if (G.mode === 'gameover') centerBox([['GAME OVER', '#ff3a3a', 16], ['SCORE ' + Math.round(G.score), '#fff', 8], ...(G.mt > 1 ? [['ENTER to retry stage ' + (G.stage + 1), '#ffe03a', 8]] : [])], 70);
       break;
+    case 'cutscene': drawCutscene(ctx, G.cs); break;
     case 'outro': drawOutro(ctx, G.mt, Math.round(G.score)); break;
   }
 }

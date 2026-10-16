@@ -25,3 +25,4 @@ body:not(.playing) #btns{opacity:0;pointer-events:none}
 body:not(.playing) #btns .b{pointer-events:none}
 @media (pointer:coarse){#touch{display:block}#help{display:none}}
 body.touch #touch{display:block}body.touch #help{display:none}
+body.cutscene .b.small{display:none}

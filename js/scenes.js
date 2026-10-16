@@ -14,7 +14,7 @@ const scenes = [
   { dur: 4.2, draw(ctx, t) { // kid wanders in
     drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.fillRect(0, 0, W, H);
     shadow(ctx, 230, 150, 44); drawHarambe(ctx, { x: 230, y: 150, face: -1, t, state: 'idle' });
-    const kx = 20 + t * 40; shadow(ctx, kx, 150, 14); drawKid(ctx, kx, 152 + Math.abs(Math.sin(t * 8)) * -2, Math.floor(t * 5) % 2 ? 'kid_walk0' : 'kid_walk1');
+    const kx = 20 + t * 40; shadow(ctx, kx, 150, 14); drawKid(ctx, kx, 152 - Math.round(Math.abs(Math.sin(t * 6)) * 3), 'kid_idle');
     if (t > 2.2) { drawText(ctx, '!', 232, 92, '#ff3030', 16, 'center'); drawText(ctx, 'uh oh', kx, 124, '#fff', 7, 'center'); }
     panel(ctx, 'CINCINNATI ZOO. A CURIOUS KID WANDERS INTO\nTHE GORILLA WORLD EXHIBIT...'); } },
   { dur: 3.6, draw(ctx, t) { // alt universe — Harambe has a better idea
@@ -48,7 +48,7 @@ export const INTRO = {
 
 export function drawOutro(ctx, t, score) {
   drawBG(ctx, 'jungle', 1700 + t * 20, t);
-  const hx = Math.min(60 + t * 40, 200); shadow(ctx, t < 4 ? hx : 200, 156, 44); drawHarambe(ctx, { x: t < 4 ? hx : 200, y: 156, face: 1, t, state: t < 4 ? 'walk' : (t > 4.6 ? 'special' : 'idle'), at: ((t - 4.6) * 0.6) % 0.6 });
+  const hx = Math.min(60 + t * 40, 200); shadow(ctx, t < 4 ? hx : 200, 156, 44); drawHarambe(ctx, { x: t < 4 ? hx : 200, y: 156, face: 1, t, wd: t * 40, state: t < 4 ? 'walk' : (t > 4.6 ? 'special' : 'idle'), at: ((t - 4.6) * 0.6) % 0.6 });
   if (t > 4.5) { ctx.fillStyle = `rgba(0,0,0,${Math.min(0.75, (t - 4.5) * 0.4)})`; ctx.fillRect(0, 0, W, H); }
   if (t > 1) drawText(ctx, 'THE BARON IS DOWN. THE JUNGLE. FINALLY.', W / 2, 40, '#ffe03a', 9, 'center');
   if (t > 5) { drawText(ctx, 'THE END', W / 2, 70, '#fff', 20, 'center'); drawText(ctx, '(the kid is fine. the army is not.)', W / 2, 90, '#8fe0a0', 7, 'center'); drawText(ctx, 'FINAL SCORE ' + score, W / 2, 110, '#8af', 9, 'center'); if (Math.floor(t * 2) % 2) drawText(ctx, 'ENTER: TITLE', W / 2, 140, '#fff', 8, 'center'); }
