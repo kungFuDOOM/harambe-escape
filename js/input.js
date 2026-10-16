@@ -15,20 +15,34 @@ export const input = {
   anyPress() { const v = Object.keys(pressed).some(k => pressed[k]); for (const k in pressed) pressed[k] = false; return v; },
 };
 
-// ---- touch ----
-const stick = document.getElementById('stick'), knob = document.getElementById('knob');
+// ---- touch: floating stick (appears under the left thumb) ----
+const zone = document.getElementById('zone'), stick = document.getElementById('stick'), knob = document.getElementById('knob');
 let stickId = null, sc = null;
 function stickMove(e) {
-  const dx = e.clientX - sc.x, dy = e.clientY - sc.y, r = 46, d = Math.hypot(dx, dy) || 1, m = Math.min(d, r);
+  const dx = e.clientX - sc.x, dy = e.clientY - sc.y, r = 40, d = Math.hypot(dx, dy) || 1, m = Math.min(d, r);
   knob.style.transform = `translate(${(dx / d) * m}px,${(dy / d) * m}px)`;
   const th = 12; set('left', dx < -th); set('right', dx > th); set('up', dy < -th); set('down', dy > th);
 }
-if (stick) {
-  stick.addEventListener('pointerdown', e => { stickId = e.pointerId; stick.setPointerCapture(e.pointerId); const b = stick.getBoundingClientRect(); sc = { x: b.left + b.width / 2, y: b.top + b.height / 2 }; stickMove(e); e.preventDefault(); });
-  stick.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
-  const end = e => { if (e.pointerId !== stickId) return; stickId = null; knob.style.transform = ''; ['left', 'right', 'up', 'down'].forEach(k => set(k, false)); };
-  stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+if (zone) {
+  zone.addEventListener('pointerdown', e => {
+    if (stickId !== null) return;
+    stickId = e.pointerId; zone.setPointerCapture(e.pointerId); sc = { x: e.clientX, y: e.clientY };
+    stick.style.display = 'block'; stick.style.left = sc.x + 'px'; stick.style.top = sc.y + 'px'; knob.style.transform = '';
+    if (!document.body.classList.contains('playing')) pressed.start = true; // menus: tap anywhere
+    stickMove(e); e.preventDefault();
+  });
+  zone.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickMove(e); });
+  const end = e => { if (e.pointerId !== stickId) return; stickId = null; stick.style.display = 'none'; ['left', 'right', 'up', 'down'].forEach(k => set(k, false)); };
+  zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
 }
+// first tap: go fullscreen where the browser allows it (not iPhone Safari; there, Add to Home Screen hides the toolbar)
+let fsTried = false;
+addEventListener('pointerdown', e => {
+  if (fsTried || e.pointerType !== 'touch') return; fsTried = true;
+  const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (f) { try { const r = f.call(el); if (r && r.catch) r.catch(() => {}); } catch (_) {} }
+  try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {}); } catch (_) {}
+}, true);
 document.querySelectorAll('[data-btn]').forEach(b => {
   const k = b.dataset.btn;
   b.addEventListener('pointerdown', e => { set(k, true); b.classList.add('on'); b.setPointerCapture(e.pointerId); e.preventDefault(); });

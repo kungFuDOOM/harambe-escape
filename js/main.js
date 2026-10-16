@@ -250,6 +250,7 @@ function segBar(x, y, n, v, cols, blink) {
   }
 }
 function drawHUD() {
+  const T = document.body.classList.contains('touch'); // leave room for the pause/music buttons
   const p = G.p, r = p.hp / p.max;
   panel(4, 3, 150, 38);
   ctx.drawImage(A.icon, 8, 6, 22, 22);
@@ -259,10 +260,11 @@ function drawHUD() {
   drawText(ctx, 'REST', 34, 36, '#ff9ad8', 8); drawHeart(ctx, 67, 36); drawText(ctx, 'x' + String(p.lives), 74, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
   // right panel: boss, or the enemy you last hit, else stage info
   const b = G.boss && G.ents.includes(G.boss) ? G.boss : null, le = G.lastHit && G.ents.includes(G.lastHit) && G.lastHit.state !== 'dead' && G.lastHitT > 0 ? G.lastHit : null, tgt = b || le;
-  panel(W - 4 - 150, 3, 150, tgt ? 30 : 22);
-  if (tgt) { drawText(ctx, tgt.d.name.toUpperCase(), W - 150 + 4 + 0, 14, tgt.boss ? '#ff7a7a' : '#ffffff', 8); segBar(W - 150 + 2, 20, tgt.boss ? 34 : 18, tgt.hp / tgt.max, ['#ff3a5a', '#ffb0c0', '#a0102a']); }
-  else drawText(ctx, 'STAGE ' + (G.stage + 1), W - 8, 14, '#ffffff', 8, 'right');
-  if (G.combo >= 2) { drawText(ctx, G.combo + ' HIT COMBO', W - 8, 52, '#ff9a2a', 8, 'right'); }
+  const OX = T ? (tgt ? 12 : 28) : 0, PW = T && !tgt ? 62 : 150;
+  panel(W - 4 - OX - PW, 3, PW, tgt ? 30 : 22);
+  if (tgt) { drawText(ctx, tgt.d.name.toUpperCase(), W - OX - 150 + 4, 14, tgt.boss ? '#ff7a7a' : '#ffffff', 8); segBar(W - OX - 150 + 2, 20, tgt.boss ? 34 : 18, tgt.hp / tgt.max, ['#ff3a5a', '#ffb0c0', '#a0102a']); }
+  else drawText(ctx, 'STAGE ' + (G.stage + 1), W - OX - 8, 14, '#ffffff', 8, 'right');
+  if (G.combo >= 2) { drawText(ctx, G.combo + ' HIT COMBO', W - OX - 8, 52, '#ff9a2a', 8, 'right'); }
 }
 function drawWorld() {
   const sx = G.shake ? (Math.random() - 0.5) * G.shake * 2 : 0, sy = G.shake ? (Math.random() - 0.5) * G.shake : 0;
@@ -340,6 +342,7 @@ function step(dt) {
 }
 function saveHi() { if (G.score > G.hiscore) { G.hiscore = Math.round(G.score); localStorage.setItem('harambe-hi', G.hiscore); } }
 function render() {
+  document.body.classList.toggle('playing', G.mode === 'play');
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
   switch (G.mode) {
