@@ -31,34 +31,45 @@ function plate(ctx, im, kind, cam) {
     });
   }
 }
-/** Haze strip that the neighbouring (old) plate fades into just outside an AI plate's edge: the plate's own per-row edge colour,
- * alpha ramping 0 -> HAZE_A towards the edge. The plate itself ramps out of the same colour (baked in), so a slide goes
- * old plate -> haze -> new plate with no two scenes overlapping (no ghosting). */
-const HZ = 30, HAZE_A = 0.85, hazeCache = {};
-function hazeStrip(kind, name, side, from = side) { // side = where the strip sits, from = which plate edge's colours it takes (differs when the plate is mirrored)
-  const key = kind + name + side + from; if (hazeCache[key]) return hazeCache[key];
-  const rows = A.bgMeta[kind].haze[name][from], n = rows.length, t = document.createElement('canvas'); t.width = 1; t.height = n;
-  const tc = t.getContext('2d'), id = tc.createImageData(1, n); rows.forEach((c, i) => { id.data.set([c[0], c[1], c[2], 255], i * 4); }); tc.putImageData(id, 0, 0);
-  const c = document.createElement('canvas'); c.width = HZ; c.height = 180; const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(t, 0, 0, 1, n, 0, 0, HZ, 180);
-  const gr = g.createLinearGradient(0, 0, HZ, 0), e = side === 'l' ? 1 : 0; // alpha is highest at the plate edge
-  for (let i = 0; i <= 8; i++) { const u = i / 8, s = u * u * (3 - 2 * u); gr.addColorStop(u, `rgba(0,0,0,${HAZE_A * (e ? s : 1 - s)})`); }
-  g.globalCompositeOperation = 'destination-in'; g.fillStyle = gr; g.fillRect(0, 0, HZ, 180);
-  return hazeCache[key] = c;
+/** Screen-to-screen transition: a same-resolution crossfade of the two neighbouring plates' real pixels (no blur, no fog colour).
+ * Each plate is extended past its edge by mirroring its own outermost columns (so the join is continuous), then plate B fades in over
+ * plate A across TZ logic px centred on the boundary. Floors share one lane height so the floor stays continuous. Built once per boundary. */
+const stripCache = {};
+const tz = () => Math.max(8, Math.min(300, Math.round(globalThis.__TZ ?? 140)));
+function oriented(im, fl) { // plate as it appears on screen (flip:1 reuses are mirrored)
+  if (!fl) return im; const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
+  g.translate(im.width, 0); g.scale(-1, 1); g.drawImage(im, 0, 0); return c;
 }
-/** AI-painted plate for a landmark screen: drawn over the stage plate at its camera stop. Its edges ramp out of a haze colour
- * (baked), and the neighbouring plate is hazed over to the same colour right outside the edge. */
+function xfade(imA, imB, pwA, pwB, Z) {
+  const h = Z / 2, hd = h * S, c = document.createElement('canvas'); c.width = Z * S; c.height = imA.height; const g = c.getContext('2d');
+  const wa = Math.min(imA.width / 2, Math.round(h * imA.width / pwA)), wb = Math.min(imB.width / 2, Math.round(h * imB.width / pwB));
+  g.drawImage(imA, imA.width - wa, 0, wa, imA.height, 0, 0, hd, c.height); // A real tail
+  g.save(); g.translate(hd * 2, 0); g.scale(-1, 1); g.drawImage(imA, imA.width - wa, 0, wa, imA.height, 0, 0, hd, c.height); g.restore(); // A mirrored beyond the edge
+  const b = document.createElement('canvas'); b.width = c.width; b.height = c.height; const q = b.getContext('2d');
+  q.save(); q.translate(hd, 0); q.scale(-1, 1); q.drawImage(imB, 0, 0, wb, imB.height, 0, 0, hd, c.height); q.restore(); // B mirrored before its edge
+  q.drawImage(imB, 0, 0, wb, imB.height, hd, 0, hd, c.height); // B real head
+  const gr = q.createLinearGradient(0, 0, c.width, 0);
+  for (let i = 0; i <= 10; i++) { const u = i / 10; gr.addColorStop(u, `rgba(0,0,0,${u * u * (3 - 2 * u)})`); }
+  q.globalCompositeOperation = 'destination-in'; q.fillStyle = gr; q.fillRect(0, 0, c.width, c.height);
+  g.drawImage(b, 0, 0); return c;
+}
+/** AI-painted plate for every screen, drawn at its camera stop (stretched <=3% to meet the next stop), with a crossfade strip on each boundary. */
 function featured(ctx, L, kind, stops, cam) {
   if (!L.x) return;
-  const scr = SCREENS[kind].screens;
+  const scr = SCREENS[kind].screens, Z = tz(), pw = i => { const g = i < stops.length - 1 ? stops[i + 1] - stops[i] : TILE_W; return g >= TILE_W && g <= TILE_W + 16 ? g : TILE_W; };
   for (let i = 0; i < stops.length; i++) {
-    const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W + HZ || x + TILE_W + HZ < 0) continue;
-    const xr = Math.round(x * S) / S;
-    const fl = !!scr[i].flip; // mirrored reuse of a plate: its left edge is the plate's right edge
-    // haze only where the neighbouring stop is a full screen away; closer stops would show the strip as a hard fog wall
-    if (i === 0 || stops[i] - stops[i - 1] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'l', fl ? 'r' : 'l'), xr - HZ, 0);
-    if (i === stops.length - 1 || stops[i + 1] - stops[i] >= TILE_W) ctx.drawImage(hazeStrip(kind, p, 'r', fl ? 'l' : 'r'), xr + TILE_W, 0);
-    if (fl) { ctx.save(); ctx.translate(xr + TILE_W, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, TILE_W, 180); ctx.restore(); }
-    else ctx.drawImage(L.x[p], xr, 0, TILE_W, 180);
+    const p = scr[i].plate; if (!p || !L.x[p]) continue; const x = stops[i] - cam; if (x > W || x + TILE_W + 16 < 0) continue;
+    const xr = Math.round(x * S) / S, w = pw(i), fl = !!scr[i].flip;
+    if (fl) { ctx.save(); ctx.translate(xr + w, 0); ctx.scale(-1, 1); ctx.drawImage(L.x[p], 0, 0, w, 180); ctx.restore(); }
+    else ctx.drawImage(L.x[p], xr, 0, w, 180);
+  }
+  if (Z <= 8) return;
+  for (let i = 0; i + 1 < stops.length; i++) {
+    const p = scr[i].plate, q = scr[i + 1].plate; if (!p || !q || !L.x[p] || !L.x[q]) continue;
+    const bx = stops[i] + pw(i) - cam; if (bx + Z / 2 < 0 || bx - Z / 2 > W) continue;
+    const k = `${kind}|${i}|${Z}|${pw(i)}|${pw(i + 1)}|${p}|${q}`;
+    const st = stripCache[k] || (stripCache[k] = xfade(oriented(L.x[p], !!scr[i].flip), oriented(L.x[q], !!scr[i + 1].flip), pw(i), pw(i + 1), Z));
+    ctx.drawImage(st, Math.round((bx - Z / 2) * S) / S, 0, Z, 180);
   }
 }
 const stopsCache = new WeakMap();

@@ -75,7 +75,7 @@ EXTRA = {
     'jungle-clearing': ('jungle', 0.61),
 }
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
-ZONE = 120        # device px (30 logic px): the plate edge ramps out of a matching haze colour over this width
+ZONE = 1          # device px: plates keep their real edge pixels; runtime crossfades neighbours (bg.js)
 HAZE_ROWS = 45    # per-row haze colour samples stored in bg.json (runtime fades the neighbouring plate into the same haze)
 # Mean floor luminance (0-255) each plate's walk band is lifted to, so heroes/enemies read against it (stage floors sit at ~25-110).
 FLOOR_LUM = {'zoo-lion': 66, 'zoo-reptile': 72, 'city-stores': 30, 'city-bridge': 34, 'fbi-server': 96, 'fbi-archive': 114,
@@ -117,7 +117,7 @@ for name, (stage, F) in EXTRA.items():
     t = np.clip(np.arange(W) / ZONE, 0, 1); t = np.minimum(t, t[::-1]); sm = (t * t * (3 - 2 * t))[None, :, None]
     left = hz['l'][:, None, :]; right = hz['r'][:, None, :]; sidew = (np.arange(W) < W / 2)[None, :, None]
     haze = np.where(sidew, left, right)
-    out = np.clip(a.astype(np.float32) * sm + haze * (1 - sm), 0, 255).astype(np.uint8)
+    out = a.copy() if ZONE <= 1 else np.clip(a.astype(np.float32) * sm + haze * (1 - sm), 0, 255).astype(np.uint8)
     f = f'{OUT}/x_{name}.webp'; Image.fromarray(out).save(f, quality=72, method=6)
     meta[stage].setdefault('extra', []).append(name); total += os.path.getsize(f)
     meta[stage].setdefault('haze', {})[name] = {s: [[int(v) for v in hz[s][r]] for r in np.linspace(0, H - 1, HAZE_ROWS).astype(int)] for s in 'lr'}
