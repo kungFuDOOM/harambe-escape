@@ -8,6 +8,7 @@ import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubb
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
+import { makeSave, writeSave, readSave, clearSave } from './save.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const SCALE = cv.width / W; // canvas is 3x the 320x180 logic grid; art is baked at that resolution
@@ -17,7 +18,7 @@ const qs = new URLSearchParams(location.search);
 
 const G = {
   mode: 'title', t: 0, mt: 0, stage: 0, cam: 0, lock: null, evIdx: 0, ents: [], props: [], items: [], proj: [], fx: [], texts: [],
-  lane: { top: 124, bot: 172 }, p: null, score: 0, hiscore: +(localStorage.getItem('harambe-hi') || 0), combo: 0, comboT: 0, shake: 0, flash: 0, hitstop: 0, goT: 0, boss: null, paused: false, god: qs.has('god'),
+  lane: { top: 124, bot: 172 }, p: null, score: 0, hiscore: (() => { try { return +(localStorage.getItem('harambe-hi') || 0); } catch (_) { return 0; } })(), combo: 0, comboT: 0, shake: 0, flash: 0, hitstop: 0, goT: 0, boss: null, paused: false, god: qs.has('god'),
 };
 window.__game = G; window.__stages = STAGES; // QA hooks
 
@@ -26,15 +27,73 @@ function newPlayer() {
 }
 function setMode(m) { G.mode = m; G.mt = 0; }
 
+// ---------- save / menus ----------
+function checkpoint() { if (G.p && !qs.has('nosave')) writeSave(makeSave(G.stage, G.p, G.score, STAGES.length)); }
+function loadGame(sv) { G.score = sv.score; G.p = newPlayer(); G.p.lives = sv.lives; G.p.max = sv.max; G.p.hp = sv.max; startStage(sv.stage, true); }
+function toTitle() { G.paused = false; G.save = readSave(STAGES.length); G.menu = titleMenu(); setMode('title'); audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); }
+function startNew() { clearSave(); G.save = null; audio.init(); audio.sfx('select'); G.menu = null; setMode(qs.has('skipintro') ? 'play0' : 'intro'); if (G.mode === 'play0') newGame(); else audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); }
+function confirmMenu(back, yes) { return mkMenu('confirm', [{ label: 'CANCEL', act: () => { G.menu = back(); } }, { label: 'YES, START OVER', act: yes, danger: true }], back); }
+function titleMenu() {
+  const sv = G.save, items = [];
+  if (sv) items.push({ label: 'CONTINUE', sub: 'STAGE ' + (sv.stage + 1) + ' - ' + STAGES[sv.stage].name, tall: true, act: () => { audio.init(); audio.sfx('select'); G.menu = null; loadGame(sv); } });
+  items.push({ label: sv ? 'NEW GAME / START OVER' : 'NEW GAME', act: () => { if (sv) G.menu = confirmMenu(titleMenu, startNew); else startNew(); } });
+  return mkMenu('title', items);
+}
+function pauseMenu() {
+  return mkMenu('pause', [{ label: 'RESUME', act: resume }, { label: 'MAIN MENU', act: () => { checkpoint(); G.paused = false; toTitle(); } },
+    { label: 'START OVER', act: () => { G.menu = confirmMenu(pauseMenu, () => { clearSave(); G.paused = false; G.menu = null; newGame(); }); } }], resume);
+}
+function mkMenu(kind, items, back) {
+  const w = kind === 'title' ? 150 : 140, gap = 4; let y = kind === 'title' ? 104 : kind === 'pause' ? 50 : 78;
+  for (const it of items) { const h = it.tall ? 24 : 18; it.r = { x: (W - w) / 2, y, w, h }; y += h + gap; }
+  return { kind, items, sel: kind === 'confirm' ? 0 : 0, back };
+}
+function resume() { G.paused = false; G.menu = null; audio.play('s', STAGES[G.stage].music); }
+function openPause() { G.paused = true; audio.stop(); checkpoint(); input.anyPress(); G.menu = pauseMenu(); }
+function menuAct(m, i) { audio.sfx('select'); m.items[i].act(); input.anyPress(); }
+function menuStep() {
+  const m = G.menu; if (!m) return;
+  const n = m.items.length;
+  if (input.take('up')) m.sel = (m.sel + n - 1) % n;
+  if (input.take('down')) m.sel = (m.sel + 1) % n;
+  if (input.take('atk') || input.take('jump')) { menuAct(m, m.sel); return; }
+  if (input.take('start')) { if (m.kind === 'title') menuAct(m, m.sel); else if (m.back) { const b = m.back(); if (b) G.menu = b; } }
+}
+function drawMenu(m) {
+  const T = document.body.classList.contains('touch');
+  m.items.forEach((it, i) => {
+    const r = it.r, on = i === m.sel;
+    panel(r.x, r.y, r.w, r.h);
+    if (on) { ctx.fillStyle = '#ffe03a'; ctx.fillRect(r.x - 2, r.y + 2, 1, r.h - 4); ctx.fillRect(r.x + r.w + 1, r.y + 2, 1, r.h - 4); ctx.fillRect(r.x + 2, r.y - 2, r.w - 4, 1); ctx.fillRect(r.x + 2, r.y + r.h + 1, r.w - 4, 1); }
+    const col = it.danger ? (on ? '#ff8a8a' : '#e06a6a') : (on ? '#ffe03a' : '#ffffff');
+    if (it.sub) { drawText(ctx, it.label, W / 2, r.y + 9, col, 8, 'center'); drawText(ctx, it.sub, W / 2, r.y + 19, '#9af0b0', 7, 'center'); }
+    else drawText(ctx, it.label, W / 2, r.y + r.h / 2 + 3, col, 8, 'center');
+  });
+  return T;
+}
+function drawPause() {
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, W, H);
+  const m = G.menu; if (!m) return;
+  if (m.kind === 'confirm') { panel(56, 34, 208, 92); drawText(ctx, 'ERASE SAVED GAME?', W / 2, 50, '#ff8a8a', 9, 'center'); drawText(ctx, 'Your progress will be lost.', W / 2, 62, '#fff', 7, 'center'); }
+  else { panel(70, 18, 180, 118); drawText(ctx, 'PAUSED', W / 2, 36, '#ffe03a', 12, 'center'); drawText(ctx, 'Progress saved', W / 2, 129, '#9af0b0', 6, 'center'); }
+  drawMenu(m);
+}
+function menuPointer(e) {
+  const m = G.menu; if (!m) return false;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  m.items.forEach((it, i) => { const b = it.r; if (x >= b.x - 4 && x <= b.x + b.w + 4 && y >= b.y - 2 && y <= b.y + b.h + 2) { m.sel = i; menuAct(m, i); } });
+  return true;
+}
+
 // ---------- stage setup ----------
 function startStage(i, keepPlayer = true) {
   const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0;
   G.props = st.props.map(p => ({ x: p.x, y: G.lane.top + 4 + ((p.x * 7) % Math.max(8, G.lane.bot - G.lane.top - 10)), kind: p.kind, hp: 2, flash: 0 }));
   if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
-  audio.play('stage' + i, st.music); setMode('stageintro');
+  checkpoint(); audio.play('stage' + i, st.music); setMode('stageintro');
 }
 function startCutscene(idx) { G.cs = { idx, panel: 0, t: 0, done: false }; audio.play('cs' + idx, CUTSCENES[idx].music); setMode('cutscene'); }
-function afterCutscene() { if (G.cs.idx + 1 < STAGES.length) startStage(G.cs.idx + 1); else { audio.play('title', { root: 55, tempo: 110, mode: 'dorian' }); setMode('outro'); } }
+function afterCutscene() { if (G.cs.idx + 1 < STAGES.length) startStage(G.cs.idx + 1); else { clearSave(); audio.play('title', { root: 55, tempo: 110, mode: 'dorian' }); setMode('outro'); } }
 window.__cutscene = startCutscene; // QA hook
 function newGame() { G.score = 0; G.p = newPlayer(); startStage(+qs.get('stage') || 0, true); if (qs.get('stage')) G.p.lives = 3; }
 
@@ -118,7 +177,7 @@ function updatePlayer(dt) {
     case 'hurt': p.x += p.vx * dt; p.vx *= 0.9; if (p.st > 0.3) p.state = 'idle'; break;
     case 'down': p.x += p.vx * dt; p.vz -= 520 * dt; p.z += p.vz * dt; if (p.z <= 0) { p.z = 0; p.vx *= 0.8; if (!p.landed) { p.landed = true; audio.sfx('land'); G.fx.push({ x: p.x, y: p.y, t: 0, dust: true }); } } if (p.st > 1.0 && p.z === 0) { p.state = 'idle'; p.landed = false; } break;
     case 'dead': p.x += p.vx * dt; p.vx *= 0.95; p.vz -= 520 * dt; p.z = Math.max(0, p.z + p.vz * dt); if (p.z === 0) p.vz = 0;
-      if (p.st > 1.4) { if (p.lives > 1) { p.lives--; p.hp = p.max; p.state = 'idle'; p.inv = 2.5; p.z = 0; p.x = Math.max(p.x, G.cam + 30); popText('LIVES x' + p.lives, p.x, p.y - 80, '#fff', 1.2); } else { p.lives = 0; audio.stop(); setMode('gameover'); } } break;
+      if (p.st > 1.4) { if (p.lives > 1) { p.lives--; p.hp = p.max; p.state = 'idle'; p.inv = 2.5; p.z = 0; p.x = Math.max(p.x, G.cam + 30); popText('LIVES x' + p.lives, p.x, p.y - 80, '#fff', 1.2); } else { p.lives = 0; audio.stop(); if (!qs.has('nosave')) writeSave(makeSave(G.stage, { lives: 3, max: 100 }, 0, STAGES.length)); setMode('gameover'); } } break;
   }
   const minX = G.cam + 22, maxX = (G.lock ?? G.cam + W) + (G.lock ? W : 0) - 12;
   p.x = clamp(p.x, minX, G.lock !== null ? G.lock + W - 22 : STAGES[G.stage].length + W);
@@ -225,7 +284,7 @@ function updatePlaying(dt) {
   for (const r of G.rubble || []) r.t += dt; G.rubble = (G.rubble || []).filter(r => r.t < 1.6);
   // wave clear
   if (G.lock !== null && !G.ents.some(e => e.state !== 'dead')) {
-    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; setMode('stageclear'); return; }
+    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.stage + 1 < STAGES.length) writeSave(makeSave(G.stage + 1, G.p, G.score, STAGES.length)); else clearSave(); setMode('stageclear'); return; }
     G.lock = null; G.goT = 3; audio.sfx('go');
   }
   if (G.goT > 0) G.goT -= dt; if (G.lastHitT > 0) G.lastHitT -= dt;
@@ -306,9 +365,9 @@ function drawTitle() {
   shadow(ctx, 48, 170, 44); drawHarambe(ctx, { x: 48, y: 170, face: 1, t: G.t, state: 'idle' });
   shadow(ctx, 250, 160, 36); drawHuman(ctx, { type: 'keeper_stun', x: 250, y: 160, face: -1, t: G.t, state: 'walk' });
   shadow(ctx, 288, 172, 36); drawHuman(ctx, { type: 'cop_baton', x: 288, y: 172, face: -1, t: G.t + 1, state: 'walk' });
-  if (Math.floor(G.t * 2) % 2 === 0) drawText(ctx, 'PRESS ENTER / TAP TO START', W / 2, 124, '#ffffff', 8, 'center');
-  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, 138, '#9ab8ff', 8, 'center');
-  drawText(ctx, 'BY KUNGFUDOOM', W / 2, 150, '#c8d0e0', 8, 'center');
+  if (G.menu && G.menu.kind === 'confirm') drawPause(); else if (G.menu) drawMenu(G.menu);
+  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, 162, '#9ab8ff', 8, 'center');
+  drawText(ctx, 'BY KUNGFUDOOM', W / 2, 173, '#c8d0e0', 7, 'center');
 }
 function stageIntro() {
   const st = STAGES[G.stage]; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -324,31 +383,31 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
-  if (input.take('mute')) audio.toggleMute();
+  input.poll(); if (input.take('mute')) audio.toggleMute();
   while (acc >= 1 / 60) { acc -= 1 / 60; step(1 / 60); }
   render();
 }
 function step(dt) {
   G.t += dt; G.mt += dt;
   switch (G.mode) {
-    case 'title': if (input.take('start') || input.take('atk') || input.take('jump')) { audio.init(); audio.sfx('select'); setMode(qs.has('skipintro') ? 'play0' : 'intro'); if (G.mode === 'play0') newGame(); else { audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); } } break;
+    case 'title': if (!G.menu) G.menu = titleMenu(); menuStep(); break;
     case 'intro': if (input.take('start') || input.take('atk') || G.mt > INTRO.total) { newGame(); } break;
     case 'stageintro': input.anyPress(); if (G.mt > 2.4) { setMode('play'); } break;
     case 'play':
-      if (input.take('start')) { G.paused = !G.paused; if (G.paused) audio.stop(); else audio.play('s', STAGES[G.stage].music); }
+      if (!G.paused) { if (input.take('start')) openPause(); } else menuStep();
       if (G.paused) return;
       if (G.hitstop > 0) { G.hitstop -= dt; return; }
       updatePlaying(dt); break;
     case 'stageclear': G.clearT = (G.clearT || 0) + dt; if (G.clearT > 3.2 && (input.take('start') || input.take('atk') || G.clearT > 6)) { startCutscene(G.stage); } break;
     case 'cutscene': if (stepCutscene(G.cs, dt, input)) afterCutscene(); break;
-    case 'outro': if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); setMode('title'); audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); } break;
+    case 'outro': if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); toTitle(); } break;
     case 'gameover': if (G.mt > 1 && (input.take('start') || input.take('atk'))) { saveHi(); G.score = 0; G.p = newPlayer(); startStage(G.stage, true); } break;
   }
   if (G.mode !== 'play') input.pressed.mute = false;
 }
-function saveHi() { if (G.score > G.hiscore) { G.hiscore = Math.round(G.score); localStorage.setItem('harambe-hi', G.hiscore); } }
+function saveHi() { if (G.score > G.hiscore) { G.hiscore = Math.round(G.score); try { localStorage.setItem('harambe-hi', G.hiscore); } catch (_) {} } }
 function render() {
-  document.body.classList.toggle('playing', G.mode === 'play'); document.body.classList.toggle('cutscene', G.mode === 'cutscene');
+  document.body.classList.toggle('menu', !!G.menu); document.body.classList.toggle('paused', !!G.paused); document.body.classList.toggle('playing', G.mode === 'play'); document.body.classList.toggle('cutscene', G.mode === 'cutscene');
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, W, H);
   switch (G.mode) {
@@ -356,7 +415,7 @@ function render() {
     case 'intro': INTRO.draw(ctx, G.mt); break;
     case 'stageintro': stageIntro(); break;
     case 'play': case 'stageclear': case 'gameover': drawWorld();
-      if (G.paused) centerBox([['PAUSED', '#ffe03a', 12], ['ENTER to resume', '#fff', 8]]);
+      if (G.paused) drawPause();
       if (G.mode === 'stageclear') centerBox([['STAGE CLEAR!', '#ffe03a', 14], [STAGES[G.stage].name + ' cleared', '#fff', 8], ['SCORE ' + Math.round(G.score), '#8af', 8], ...(G.clearT > 3.2 ? [['ENTER / ATK to continue', '#fff', 7]] : [])], 60);
       if (G.mode === 'gameover') centerBox([['GAME OVER', '#ff3a3a', 16], ['SCORE ' + Math.round(G.score), '#fff', 8], ...(G.mt > 1 ? [['ENTER to retry stage ' + (G.stage + 1), '#ffe03a', 8]] : [])], 70);
       break;
@@ -366,7 +425,11 @@ function render() {
 }
 cv.addEventListener('pointerdown', e => {
   if (G.mode === 'cutscene') { const r = cv.getBoundingClientRect(); if (e.clientY < r.top + r.height * 0.2 && e.clientX > r.left + r.width * 0.72) { input.pressed.skip = true; return; } } // tap SKIP (top right)
+  if (G.menu) { menuPointer(e); e.preventDefault(); return; }
   if (G.mode !== 'play') input.pressed.start = true;
 });
+addEventListener('pagehide', () => { if (G.mode === 'play') checkpoint(); });
+addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') checkpoint(); });
+G.save = readSave(STAGES.length);
 loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { document.body.insertAdjacentHTML('beforeend', '<pre style="color:#f66">Failed to load art: ' + e.message + '</pre>'); });
 // { audio.init(); newGame(); G.mode = 'play'; }
