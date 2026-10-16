@@ -26,3 +26,7 @@ body:not(.playing) #btns .b{pointer-events:none}
 @media (pointer:coarse){#touch{display:block}#help{display:none}}
 body.touch #touch{display:block}body.touch #help{display:none}
 body.cutscene .b.small{display:none}
+/* menus (title / pause) are drawn on the canvas; tapping them goes to the canvas, so lift the game pads out of the way */
+body.menu #zone{pointer-events:none}
+body.menu #btns{opacity:0}body.menu #btns .b{pointer-events:none}
+body.menu:not(.paused) .small.pause{display:none}

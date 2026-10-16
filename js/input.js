@@ -8,7 +8,19 @@ addEventListener('keydown', e => { const k = MAP[e.key]; if (k) { set(k, true); 
 addEventListener('keyup', e => { const k = MAP[e.key]; if (k) set(k, false); });
 addEventListener('blur', () => { for (const k in down) down[k] = false; });
 
+// gamepad (optional): A=attack/select, B=jump, X=heavy, Y=special, Start=pause, d-pad/left stick=move/navigate
+const GP = { 0: 'atk', 1: 'jump', 2: 'heavy', 3: 'special', 9: 'start', 8: 'start', 12: 'up', 13: 'down', 14: 'left', 15: 'right' }, gpHeld = {};
+function pollPad() {
+  let pads = []; try { pads = (navigator.getGamepads && navigator.getGamepads()) || []; } catch (_) {}
+  const now = {};
+  for (const g of pads) { if (!g || !g.connected) continue;
+    for (const b in GP) if (g.buttons[b] && g.buttons[b].pressed) now[GP[b]] = true;
+    if (g.axes[0] < -0.5) now.left = true; if (g.axes[0] > 0.5) now.right = true; if (g.axes[1] < -0.5) now.up = true; if (g.axes[1] > 0.5) now.down = true; }
+  for (const k of new Set([...Object.keys(now), ...Object.keys(gpHeld)])) { if (!!now[k] !== !!gpHeld[k]) set(k, !!now[k]); }
+  for (const k in gpHeld) delete gpHeld[k]; Object.assign(gpHeld, now);
+}
 export const input = {
+  poll: pollPad,
   down, pressed,
   axis() { return { x: (down.right ? 1 : 0) - (down.left ? 1 : 0), y: (down.down ? 1 : 0) - (down.up ? 1 : 0) }; },
   take(k) { const v = !!pressed[k]; pressed[k] = false; return v; },
