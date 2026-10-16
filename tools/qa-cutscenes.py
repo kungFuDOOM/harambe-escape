@@ -36,7 +36,7 @@ async def main():
             mode=await pg.evaluate("[window.__game.mode,window.__game.stage]"); print('cs',idx,'->',mode)
         # skip test
         await pg.evaluate("window.__cutscene(1)"); await pg.wait_for_timeout(400)
-        await pg.touchscreen.tap(800,20); await pg.wait_for_timeout(300)
+        await pg.touchscreen.tap(740,20); await pg.wait_for_timeout(300)
         print('after skip tap',await pg.evaluate("[window.__game.mode,window.__game.stage]"))
         print('errors',errs)
         await b.close()

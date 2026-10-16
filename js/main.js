@@ -364,6 +364,9 @@ function render() {
     case 'outro': drawOutro(ctx, G.mt, Math.round(G.score)); break;
   }
 }
-cv.addEventListener('pointerdown', () => { if (G.mode !== 'play') input.pressed.start = true; });
+cv.addEventListener('pointerdown', e => {
+  if (G.mode === 'cutscene') { const r = cv.getBoundingClientRect(); if (e.clientY < r.top + r.height * 0.2 && e.clientX > r.left + r.width * 0.72) { input.pressed.skip = true; return; } } // tap SKIP (top right)
+  if (G.mode !== 'play') input.pressed.start = true;
+});
 loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { document.body.insertAdjacentHTML('beforeend', '<pre style="color:#f66">Failed to load art: ' + e.message + '</pre>'); });
 // { audio.init(); newGame(); G.mode = 'play'; }
