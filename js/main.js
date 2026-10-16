@@ -388,6 +388,7 @@ function frame(now) {
   render();
 }
 function step(dt) {
+  if (G.mode === 'play' && G.paused) { menuStep(); return; } // paused = the whole world is frozen, incl. the shared animation clock G.t (hero invuln blink, bananas, bg, GO arrow)
   G.t += dt; G.mt += dt;
   switch (G.mode) {
     case 'title': if (!G.menu) G.menu = titleMenu(); menuStep(); break;
@@ -429,7 +430,7 @@ cv.addEventListener('pointerdown', e => {
   if (G.mode !== 'play') input.pressed.start = true;
 });
 addEventListener('pagehide', () => { if (G.mode === 'play') checkpoint(); });
-addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') checkpoint(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') { checkpoint(); if (!G.paused && !G.menu) openPause(); } last = performance.now(); acc = 0; }); // hide = auto-pause; no catch-up burst on return
 G.save = readSave(STAGES.length);
 loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { document.body.insertAdjacentHTML('beforeend', '<pre style="color:#f66">Failed to load art: ' + e.message + '</pre>'); });
 // { audio.init(); newGame(); G.mode = 'play'; }
