@@ -141,8 +141,9 @@ def prop_sheet():
         if cur[0] + 44 > 512: cur[0] = 0; cur[1] += cur[2] + 2; cur[2] = 0
         items[nm] = [cur[0], cur[1], 44, 44]; cur[0] += 46; cur[2] = max(cur[2], 44)
     # HUD icon: crop Harambe head from idle frame
-    hi = harambe(P(hip=(0, -19), lean=18, nearArm=(8, 20), farArm=(-6, 10), nearLeg=(14, -2), farLeg=(-12, 2)), W=96, H=80, ax=44, ay=74)
-    bb = hi.getbbox(); head = hi.crop((bb[0] + 14, bb[1] - 1, bb[0] + 14 + 24, bb[1] + 20))
+    import harambe3
+    hi = harambe3.harambe3(P(hip=(0, -19), lean=18, nearArm=(8, 20), farArm=(-6, 10), nearLeg=(14, -2), farLeg=(-12, 2)), W=128, H=112, ax=58, ay=104)
+    bb = hi.getbbox(); head = hi.crop((bb[2] - 34, bb[1], bb[2] + 2, bb[1] + 34)); head = head.resize((24, 23), Image.NEAREST)
     if cur[0] + 28 > 512: cur[0] = 0; cur[1] += cur[2] + 2; cur[2] = 0
     big_img.alpha_composite(head, (cur[0], cur[1])); items['icon_harambe'] = [cur[0], cur[1], head.width, head.height]; cur[0] += 30; cur[2] = max(cur[2], head.height)
     # enemy portrait icons (for boss bar)

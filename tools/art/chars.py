@@ -1,5 +1,6 @@
 import math, json, os, sys
 from rig import *
+import harambe3
 
 OUTD = os.path.join(os.path.dirname(__file__), '..', '..', 'assets')
 os.makedirs(OUTD, exist_ok=True)
@@ -36,11 +37,13 @@ def harambe_anims():
         P(hip=(-4, -19), lean=-5, nearArm=(150, 170), farArm=(140, 165), nearLeg=(20, -8), farLeg=(-22, 10), mouth=1, eyes=2),
         P(hip=(7, -17), lean=34, nearArm=(88, 80), farArm=(82, 76), nearLeg=(40, -4), farLeg=(-34, 14), mouth=2, eyes=2, head=(1, 1)),
         P(hip=(6, -18), lean=26, nearArm=(70, 60), farArm=(65, 55), nearLeg=(34, -2), farLeg=(-28, 10), mouth=1)]
+    A['atk1'][1]['trail'] = (-20, 85, 17); A['atk2'][1]['trail'] = (-10, 150, 17); A['atk3'][1]['trail'] = (20, 95, 18)
     A['heavy'] = [
         P(hip=(-2, -20), lean=-8, nearArm=(160, 175), farArm=(150, 170), nearLeg=(14, -4), farLeg=(-14, 4), mouth=1, eyes=2),
         P(hip=(-3, -21), lean=-16, nearArm=(172, 185), farArm=(165, 180), nearLeg=(14, -4), farLeg=(-14, 4), mouth=2, eyes=2, head=(-1, 1)),
         P(hip=(6, -16), lean=42, nearArm=(60, 38), farArm=(52, 30), nearLeg=(42, 4), farLeg=(-30, 14), mouth=2, eyes=2, head=(1, 1), crouch=1),
         P(hip=(5, -17), lean=30, nearArm=(35, 25), farArm=(28, 20), nearLeg=(34, 4), farLeg=(-26, 10), mouth=0)]
+    A['heavy'][2]['trail'] = (-170, 70, 20)
     A['jump'] = [
         P(hip=(0, -21), lean=8, nearArm=(150, 165), farArm=(130, 150), nearLeg=(55, -60), farLeg=(35, -50), mouth=1),
         P(hip=(0, -22), lean=0, nearArm=(120, 140), farArm=(100, 120), nearLeg=(70, -75), farLeg=(45, -60), mouth=1, eyes=2),
@@ -79,14 +82,15 @@ def human_anims(prop=None, kind='melee'):
         A['run'].append(P(hip=(2, -16 + 2 * abs(math.sin(ph))), lean=24, nearLeg=leg(ph), farLeg=leg(ph + math.pi), nearArm=(-50 * math.sin(ph) + 10, 70), farArm=(50 * math.sin(ph) - 10, 60), mouth=1, eyes=2, prop=prop))
     if kind == 'net':
         A['windup'] = [P(hip=(-2, -17), lean=-4, nearArm=(60, 80), farArm=(40, 60), prop=prop, eyes=2)]
-        A['atk'] = [P(hip=(-2, -17), lean=-6, nearArm=(60, 82), farArm=(40, 60), prop=prop, eyes=2),
-                    P(hip=(-5, -17), lean=-12, nearArm=(70, 86), farArm=(50, 70), prop=prop, mouth=1, eyes=2),
+        A['atk'] = [P(hip=(-3, -17), lean=-10, nearArm=(40, 70), farArm=(30, 50), prop=prop, eyes=2),
+                    P(hip=(-7, -17), lean=-18, nearArm=(76, 90), farArm=(56, 76), prop=prop, mouth=1, eyes=2),
                     P(hip=(-3, -17), lean=-4, nearArm=(62, 82), farArm=(40, 60), prop=prop)]
     else:
-        A['windup'] = [P(hip=(-3, -17), lean=-8, nearArm=(-60, -170) if prop in ('baton', 'anchor', 'hook', 'bucket') else (-50, -80), farArm=(30, 40), nearLeg=(14, -6), farLeg=(-14, 4), prop=prop, eyes=2, mouth=1, propAngle=0)]
-        A['atk'] = [P(hip=(-3, -17), lean=-8, nearArm=(-60, -170) if prop in ('baton', 'anchor', 'hook', 'bucket') else (-50, -80), farArm=(30, 40), nearLeg=(14, -6), farLeg=(-14, 4), prop=prop, eyes=2, mouth=1),
-                    P(hip=(4, -16), lean=22, nearArm=(88, 96) if prop not in ('baton', 'anchor', 'hook', 'bucket') else (60, 70), farArm=(-20, -10), nearLeg=(30, 0), farLeg=(-24, 10), prop=prop, eyes=2, mouth=2, head=(1, 0)),
-                    P(hip=(3, -17), lean=14, nearArm=(66, 76), farArm=(-14, 0), nearLeg=(22, 0), farLeg=(-18, 6), prop=prop)]
+        raised = prop in ('baton', 'anchor', 'hook', 'bucket')
+        A['windup'] = [P(hip=(-4, -17), lean=-16, nearArm=(-70, -175) if raised else (-60, -90), farArm=(40, 60), nearLeg=(18, -8), farLeg=(-18, 6), prop=prop, eyes=2, mouth=1, head=(-1, 1))]
+        A['atk'] = [P(hip=(-5, -17), lean=-20, nearArm=(-80, -180) if raised else (-70, -95), farArm=(50, 70), nearLeg=(20, -10), farLeg=(-20, 8), prop=prop, eyes=2, mouth=1, head=(-1, 1)),
+                    P(hip=(6, -15), lean=34, nearArm=(96, 100) if not raised else (70, 62), farArm=(-34, -20), nearLeg=(40, 6), farLeg=(-32, 14), prop=prop, eyes=2, mouth=2, head=(2, 0), trail=(-150, 90, 14) if raised else (20, 100, 14)),
+                    P(hip=(4, -16), lean=18, nearArm=(70, 76), farArm=(-18, -4), nearLeg=(26, 0), farLeg=(-20, 8), prop=prop, mouth=1)]
     A['hurt'] = [P(hip=(-3, -17), lean=-14, nearArm=(-60, -50), farArm=(-80, -60), nearLeg=(8, 0), farLeg=(-12, 4), eyes=1, mouth=1, head=(-1, 1), prop=None),
                  P(hip=(-2, -17), lean=-6, nearArm=(-30, -20), farArm=(-40, -20), eyes=1, mouth=0, prop=None)]
     A['down'] = [P(hip=(-4, -20), lean=-48, nearArm=(-90, -70), farArm=(-100, -80), nearLeg=(72, 60), farLeg=(60, 50), eyes=1, mouth=2, prop=None),
@@ -132,16 +136,16 @@ def pack(name, anims, renderer, cw, ch, ax, ay):
 def build():
     meta = {}
     A = harambe_anims()
-    meta['harambe'] = pack('harambe', A, lambda p, f: harambe(p, W=96, H=80, ax=44, ay=74, flash=f), 96, 80, 44, 74)
+    meta['harambe'] = pack('harambe', A, lambda p, f: harambe3.harambe3(p, W=128, H=124, ax=58, ay=116, flash=f), 128, 124, 58, 116)
     for k, st in STYLES.items():
         prop, kind = ENEMY_PROPS[k]
         A = human_anims(prop, kind)
-        meta[k] = pack(k, A, lambda p, f, st=st: human(p, st, W=76, H=76, ax=38, ay=70, flash=f), 76, 76, 38, 70)
+        meta[k] = pack(k, A, lambda p, f, st=st: human(p, dict(st, scale=1.2), W=92, H=92, ax=46, ay=86, flash=f), 92, 92, 46, 86)
     for k, (st, prop, kind) in BOSS_STYLES.items():
         A = human_anims(prop, kind)
         s = st['scale']
         cw, ch = 128, 124
-        meta[k] = pack(k, A, lambda p, f, st=st: human(p, st, W=128, H=124, ax=60, ay=116, flash=f), cw, ch, 60, 116)
+        meta[k] = pack(k, A, lambda p, f, st=st: human(p, dict(st, scale=st['scale'] * 1.12), W=150, H=142, ax=70, ay=134, flash=f), 150, 142, 70, 134)
     json.dump(meta, open(os.path.join(OUTD, 'sprites.json'), 'w'))
     return meta
 

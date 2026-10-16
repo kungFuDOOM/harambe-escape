@@ -309,6 +309,19 @@ def human(pose, st, W=76, H=76, ax=38, ay=70, flash=False):
     if prop:
         draw_prop(cv, prop, hx, hy, wa, s, st, pose, outl, hip)
     final_outline(cv, outl)
+    tr = pose.get('trail')
+    if tr:
+        from PIL import ImageDraw
+        a0, a1, rr = tr; SSn = 4
+        im = Image.new('L', (cv.w * SSn, cv.h * SSn), 0); dr = ImageDraw.Draw(im)
+        o_, i_ = [], []
+        for k in range(15):
+            t = k / 14; an = a0 + (a1 - a0) * t; th = (0.2 + 0.9 * t) * s * 2.0
+            ox, oy = vec(an, (rr + th) * s); ix, iy = vec(an, (rr - th * 0.4) * s)
+            o_.append(((sh[0] + ox) * SSn, (sh[1] + oy) * SSn)); i_.append(((sh[0] + ix) * SSn, (sh[1] + iy) * SSn))
+        dr.polygon(o_ + i_[::-1], fill=255)
+        mk = np.array(im.resize((cv.w, cv.h), Image.BILINEAR)) > 110
+        free = mk & (cv.a[:, :, 3] == 0); cv.a[free, :3] = (255, 244, 205); cv.a[free, 3] = 255
     img = cv.img()
     if flash:
         a = np.array(img); a[a[..., 3] > 0, :3] = 255; img = Image.fromarray(a)
