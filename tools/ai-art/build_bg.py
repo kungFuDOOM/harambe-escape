@@ -74,6 +74,21 @@ EXTRA = {
     'jungle-temple': ('jungle', 0.72),
     'jungle-clearing': ('jungle', 0.61),
 }
+# Lane-on-floor corrections (feet must land on painted floor, never on a wall/ledge face). name -> (floor-top F, floor-bottom Fb or None).
+# Fb: the painted floor ends there (ledge/wall face below), so src[F:Fb] fills the whole walk band (mirror-tiled when it would stretch >1.8x).
+FIX = {
+    'city-stores': (0.75, None),     # shop-front wall base sat ~17 logic px below the assumed floor top
+    'fbi-server': (0.705, None),     # plinth base
+    'zoo-lion': (0.785, 0.935),      # terrace front face below the paving
+    'fbi-director': (0.67, 0.83),    # carpet ends at a dais ledge + brick face
+    'base-airfield': (0.697, None),  # tarmac strip above a hangar-apron wall (floor comes from DONOR)
+    'jungle-waterfall': (0.765, None),  # dirt path above a cliff wall
+    'jungle-canopy': (0.728, None),   # grass lip above an earth cut face
+    'jungle-thicket': (0.735, None),  # grass lip above a bush/stone wall
+}
+# The painted floor of these plates is only a thin lip above a wall/cliff face, so the walk band below the lip is taken from a plate with
+# a real ground (already built, colour-matched to the lip, 10 row blend) instead of stretching a few pixels.
+DONOR = {'base-airfield': 'base-hq', 'jungle-waterfall': 'jungle-treeline', 'jungle-canopy': 'jungle-cave', 'jungle-thicket': 'jungle-clearing'}
 FLOOR_LIFT = 10   # logic px the plate floor top sits above lane top
 ZONE = 1          # device px: plates keep their real edge pixels; runtime crossfades neighbours (bg.js)
 HAZE_ROWS = 45    # per-row haze colour samples stored in bg.json (runtime fades the neighbouring plate into the same haze)
@@ -102,8 +117,25 @@ for name, (stage, F) in EXTRA.items():
     src = Image.open(f'{SRC}/bgx/{name}.jpg').convert('RGB')
     sh = src.height; lane_top, lane_bot = meta[stage]['lane']
     T = (lane_top - FLOOR_LIFT) * 3  # target floor-top row in the 540px output
+    Fb = None
+    if name in FIX: F, Fb = FIX[name]
     fy = int(round(F * sh)); top = src.crop((0, 0, src.width, fy)).resize((W, T), Image.LANCZOS)
-    bot = src.crop((0, fy, src.width, sh)).resize((W, H - T), Image.LANCZOS)
+    if Fb is None:
+        bot = src.crop((0, fy, src.width, sh)).resize((W, H - T), Image.LANCZOS)
+    else:
+        fb = int(round(Fb * sh)); band = src.crop((0, fy, src.width, fb)); need = H - T
+        nat = band.height * W / src.width; n = max(1, int(np.ceil(need / nat / 1.8)))
+        hs = [need * (i + 1) // n - need * i // n for i in range(n)]; parts = []
+        for i, hh in enumerate(hs):
+            b = band if i % 2 == 0 else band.transpose(Image.FLIP_TOP_BOTTOM)
+            parts.append(np.array(b.resize((W, hh), Image.LANCZOS)))
+        bot = np.concatenate(parts, 0)
+    if name in DONOR:
+        dn = np.array(Image.open(f'{OUT}/x_{DONOR[name]}.webp').convert('RGB')).astype(np.float32)[T:]
+        tp = np.array(top).astype(np.float32)
+        dn = dn + (tp[-14:].mean((0, 1)) - dn[:14].mean((0, 1)))[None, None, :] * np.clip(1 - np.arange(dn.shape[0]) / 120, 0.4, 1)[:, None, None]
+        r = np.clip(np.arange(dn.shape[0]) / 10, 0, 1)[:, None, None]
+        dn[:10] = dn[:10] * r[:10] + tp[-10:] * (1 - r[:10]); bot = np.clip(dn, 0, 255).astype(np.uint8)
     a = np.concatenate([np.array(top), np.array(bot)], 0)
     a = lift_floor(a, lane_top * 3, min(H, lane_bot * 3 + 10), FLOOR_LUM[name])
     # per-row haze colour of each side (edge columns, vertically blurred), then ramp the plate edge out of it (tone-matched fade)
