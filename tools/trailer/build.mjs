@@ -70,7 +70,7 @@ const fc = parts.join(';') + ';' + segs.map((_, i) => `[v${i}]`).join('') + `con
   + `fade=t=in:st=0:d=0.6,fade=t=out:st=${(TOTAL - 0.5).toFixed(3)}:d=0.5,format=yuv420p[v]`;
 const args = ['-loglevel', 'error', '-y', ...files.flatMap(f => ['-i', path.join(RAW, f + '.mp4')]), '-i', wavPath, '-filter_complex', fc,
   '-map', '[v]', '-map', `${files.length}:a`, '-af', `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${(TOTAL - 0.6).toFixed(3)}:d=0.6`, '-ar', '48000',
-  '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-r', String(FPS), '-c:a', 'aac', '-b:a', '192k', '-t', TOTAL.toFixed(3), '-movflags', '+faststart', OUT];
+  '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', '24', '-r', String(FPS), '-c:a', 'aac', '-b:a', '192k', '-t', TOTAL.toFixed(3), '-movflags', '+faststart', OUT];
 const r = spawnSync('ffmpeg', args, { stdio: 'inherit' });
 if (r.status) process.exit(r.status);
 console.log('wrote', OUT);
