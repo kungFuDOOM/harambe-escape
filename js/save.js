@@ -20,3 +20,5 @@ export function readSave(stageCount = 5, s) {
   try { const raw = st.getItem(SAVE_KEY); if (!raw) return null; return sanitize(JSON.parse(raw), stageCount); } catch (_) { return null; }
 }
 export function clearSave(s) { const st = store(s); if (!st) return false; try { st.removeItem(SAVE_KEY); return true; } catch (_) { return false; } }
+// Monotonic merge: a new snapshot never replaces a save that is further along (same stage: newer snapshot wins).
+export function keepFurthest(next, old) { return old && old.stage > next.stage ? old : next; }

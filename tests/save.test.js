@@ -32,3 +32,21 @@ test('blocked storage never throws', () => {
   assert.equal(readSave(5, blocked), null); assert.equal(clearSave(blocked), false);
   assert.equal(readSave(5, null === 1 ? 0 : undefined), null); // no localStorage in node
 });
+
+import { keepFurthest } from '../js/save.js';
+test('keepFurthest: an older stage never overwrites a newer save', () => {
+  const s = mem(); const adv = makeSave(2, { lives: 2, max: 100 }, 900), stale = makeSave(1, { lives: 3, max: 100 }, 500);
+  writeSave(adv, s);
+  writeSave(keepFurthest(stale, readSave(5, s)), s);
+  assert.equal(readSave(5, s).stage, 2);
+  writeSave(keepFurthest(makeSave(2, { lives: 1, max: 100 }, 950), readSave(5, s)), s);
+  assert.deepEqual([readSave(5, s).stage, readSave(5, s).lives, readSave(5, s).score], [2, 1, 950]);
+});
+test('level clear then reload: Continue points at the next stage with hearts and score', () => {
+  const s = mem();
+  writeSave(makeSave(0, { lives: 3, max: 100 }, 0), s);
+  writeSave(makeSave(1, { lives: 2, max: 120 }, 3210), s);
+  writeSave(keepFurthest(makeSave(0, { lives: 2, max: 120 }, 3210), readSave(5, s)), s);
+  const r = readSave(5, s);
+  assert.deepEqual([r.stage, r.lives, r.max, r.score], [1, 2, 120, 3210]);
+});
