@@ -94,7 +94,8 @@ export async function openGame(query = '') {
 // If `draw` is given the game loop is not advanced; `draw(i)` paints the canvas itself.
 export async function record(page, out, frames, { each = '() => {}', draw = null, bot = true } = {}) {
   const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'png', '-i', '-',
-    '-c:v', 'libx264', '-preset', 'fast', '-crf', '8', '-pix_fmt', 'yuv444p', out], { stdio: ['pipe', 'inherit', 'inherit'] });
+    ...(out.endsWith('.mov') ? ['-c:v', 'png'] : ['-c:v', 'libx264', '-preset', 'fast', '-crf', '8', '-pix_fmt', 'yuv444p']), out], // .mov keeps alpha (overlays)
+    { stdio: ['pipe', 'inherit', 'inherit'] });
   const t0 = await page.evaluate(() => window.__vt());
   const logStart = await page.evaluate(() => window.__sfxlog.length);
   for (let i = 0; i < frames; i++) {

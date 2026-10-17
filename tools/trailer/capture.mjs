@@ -47,10 +47,10 @@ const JOBS = {
       T.drawCutscene(c, { idx: ${idx}, panel: ${pnl}, t: i / 30 }); c.fillStyle = '#05040f'; c.fillRect(150, 0, 170, 14); c.fillRect(300, 160, 20, 20); }` });
     await g.close(); return { sfx, errs: g.errs };
   },
-  async card(name, secs = 2) {
+  async card(name, secs = 2) { // cards named o_* are transparent overlays for gameplay (alpha .mov)
     const g = await openGame('');
     await g.page.evaluate(async () => { window.__cards = (await import('/tools/trailer/cards.js')).CARDS; });
-    const sfx = await record(g.page, path.join(OUT, `card_${name}.mp4`), sec(secs), { draw: `i => { const T = window.__T, c = T.ctx;
+    const sfx = await record(g.page, path.join(OUT, `card_${name}.${name.startsWith('o_') ? 'mov' : 'mp4'}`), sec(secs), { draw: `i => { const T = window.__T, c = T.ctx;
       c.setTransform(T.SCALE, 0, 0, T.SCALE, 0, 0); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 320, 180); window.__cards['${name}'](c, i / 30); }` });
     await g.close(); return { sfx, errs: g.errs };
   },

@@ -53,7 +53,7 @@ The slicer keys out the magenta (hue based, so the darker ground shadows go too,
 node tools/trailer/capture.mjs /tmp/trailer-raw            # raw footage + sfx logs (needs playwright + ffmpeg)
 node tools/trailer/capture.mjs /tmp/trailer-raw card:zoo:1.8 card:end:6 ...   # title cards (see tools/trailer/cards.js)
 node tools/trailer/build.mjs /tmp/trailer-raw harambe-trailer.mp4             # cut list, soundtrack, 1080p encode
-PIPER=piper PIPER_VOICE=en_GB-alan-medium.onnx node tools/trailer/build-doc.mjs /tmp/trailer-raw harambe-doc.mp4   # 30 s nature-doc cut, narrated with Piper TTS
+node tools/trailer/build-arcade.mjs /tmp/trailer-raw harambe-arcade.mp4      # 45 s arcade attract-mode cut (cards: boot news slam hero vs_* attract o_*)
 ```
 
 By kungFuDOOM.
