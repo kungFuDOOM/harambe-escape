@@ -8,7 +8,7 @@ import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubb
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
-import { makeSave, writeSave, readSave, clearSave } from './save.js';
+import { makeSave, keepFurthest, writeSave, readSave, clearSave } from './save.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const SCALE = cv.width / W; // canvas is 3x the 320x180 logic grid; art is baked at that resolution
@@ -28,7 +28,15 @@ function newPlayer() {
 function setMode(m) { input.releaseTouch(); G.mode = m; G.mt = 0; }
 
 // ---------- save / menus ----------
-function checkpoint() { if (G.p && !qs.has('nosave')) writeSave(makeSave(G.stage, G.p, G.score, STAGES.length)); }
+// Stage Continue should land on: once the boss is dead (stageclear / cutscene) that is the NEXT stage, never the one just beaten.
+function contStage() { return (G.mode === 'stageclear' || G.mode === 'cutscene') ? G.stage + 1 : G.stage; }
+// Never let a save move backwards (a pause / page-hide write must not overwrite a newer stage-clear save). New game / Start over clear the save first.
+function checkpoint() {
+  if (!G.p || qs.has('nosave')) return;
+  const st = contStage(); if (st >= STAGES.length) return;
+  writeSave(keepFurthest(makeSave(st, G.p, G.score, STAGES.length), readSave(STAGES.length)));
+}
+function checkpointIfLive() { if (G.p && ['play', 'stageclear', 'cutscene', 'stageintro'].includes(G.mode)) checkpoint(); }
 function loadGame(sv) { G.score = sv.score; G.p = newPlayer(); G.p.lives = sv.lives; G.p.max = sv.max; G.p.hp = sv.max; startStage(sv.stage, true); }
 function toTitle() { G.paused = false; G.save = readSave(STAGES.length); G.menu = titleMenu(); setMode('title'); audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); }
 function startNew() { clearSave(); G.save = null; audio.init(); audio.sfx('select'); G.menu = null; setMode(qs.has('skipintro') ? 'play0' : 'intro'); if (G.mode === 'play0') newGame(); else audio.play('title', { root: 52, tempo: 100, mode: 'minor' }); }
@@ -285,7 +293,7 @@ function updatePlaying(dt) {
   for (const r of G.rubble || []) r.t += dt; G.rubble = (G.rubble || []).filter(r => r.t < 1.6);
   // wave clear
   if (G.lock !== null && !G.ents.some(e => e.state !== 'dead')) {
-    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.p.state === 'walk') G.p.state = 'idle'; if (G.stage + 1 < STAGES.length) writeSave(makeSave(G.stage + 1, G.p, G.score, STAGES.length)); else clearSave(); setMode('stageclear'); return; }
+    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.p.state === 'walk') G.p.state = 'idle'; setMode('stageclear'); if (G.stage + 1 < STAGES.length) checkpoint(); else clearSave(); return; }
     G.lock = null; G.goT = 3; audio.sfx('go');
   }
   if (G.goT > 0) G.goT -= dt; if (G.lastHitT > 0) G.lastHitT -= dt;
@@ -430,8 +438,9 @@ cv.addEventListener('pointerdown', e => {
   if (G.menu) { menuPointer(e); e.preventDefault(); return; }
   if (G.mode !== 'play') input.pressed.start = true;
 });
-addEventListener('pagehide', () => { if (G.mode === 'play') checkpoint(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && G.mode === 'play') { checkpoint(); if (!G.paused && !G.menu) openPause(); } last = performance.now(); acc = 0; }); // hide = auto-pause; no catch-up burst on return
+addEventListener('pagehide', checkpointIfLive);
+addEventListener('beforeunload', checkpointIfLive);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { checkpointIfLive(); if (G.mode === 'play' && !G.paused && !G.menu) openPause(); } last = performance.now(); acc = 0; }); // hide = auto-pause; no catch-up burst on return
 G.save = readSave(STAGES.length);
 loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { document.body.insertAdjacentHTML('beforeend', '<pre style="color:#f66">Failed to load art: ' + e.message + '</pre>'); });
 // { audio.init(); newGame(); G.mode = 'play'; }
