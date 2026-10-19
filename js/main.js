@@ -454,10 +454,10 @@ function drawHUD() {
   drawText(ctx, 'LIVES', 34, 36, '#ff9ad8', 8); drawHeart(ctx, 76, 35.5, 0.85); drawText(ctx, 'x' + String(p.lives), 84, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
   // right panel: boss, or the enemy you last hit, else stage info
   const b = G.boss && G.ents.includes(G.boss) ? G.boss : null, le = G.lastHit && G.ents.includes(G.lastHit) && G.lastHit.state !== 'dead' && G.lastHitT > 0 ? G.lastHit : null, el = G.ents.find(e => e.tag && e.state !== 'dead' && e.state !== 'drop'), tgt = b || le || el;
-  const OX = T ? (tgt ? 12 : 28) : 0, PW = T && !tgt ? 62 : 150;
+  const OX = T ? (tgt ? 12 : 28) : 0, PW = tgt ? 150 : T ? 62 : 76;
   panel(W - 4 - OX - PW, 3, PW, tgt ? 30 : 22);
   if (tgt) { drawText(ctx, (tgt.tag ? (tgt.tag === 'MINI' ? 'MINI ' : 'ELITE ') : '') + tgt.d.name.toUpperCase(), W - OX - 150 + 4, 14, tgt.boss ? '#ff7a7a' : tgt.tag ? '#ffd23a' : '#ffffff', 8); segBar(W - OX - 150 + 2, 20, tgt.boss ? 34 : 18, tgt.hp / tgt.max, ['#ff3a5a', '#ffb0c0', '#a0102a']); }
-  else drawText(ctx, 'STAGE ' + (G.stage + 1), W - OX - 8, 14, '#ffffff', 8, 'right');
+  else drawText(ctx, 'STAGE ' + (G.stage + 1), W - 4 - OX - PW / 2 + 0.5, 17.5, '#ffffff', 8, 'center'); // centred in its box (cap height ~7px, box y 3..25)
   if (p.rage > 0) drawText(ctx, 'RAGE ' + Math.ceil(p.rage), 8, 52, Math.floor(G.t * 6) % 2 ? '#ff6a3a' : '#ffd23a', 8);
   if (G.combo >= 2) { drawText(ctx, G.combo + ' HIT COMBO', W - OX - 8, 52, '#ff9a2a', 8, 'right'); }
 }
