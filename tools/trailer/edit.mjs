@@ -51,7 +51,7 @@ export async function encode({ raw, out, segs, total, music, extra, musicVol = 0
   const ga = files.length, master = `loudnorm=I=-14:TP=-1.5:LRA=11,afade=t=out:st=${(total - 0.6).toFixed(3)}:d=0.6`;
   if (voice.length) { // each line delayed into place; the game audio ducks under the narration
     fc += ';' + voice.map(([t], i) => `[${ga + 1 + i}:a]aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(t * 1000)}:all=1[n${i}]`).join(';')
-      + ';' + voice.map((_, i) => `[n${i}]`).join('') + `amix=inputs=${voice.length}:normalize=0,volume=${voiceVol},asplit[vo][key]`
+      + ';' + voice.map((_, i) => `[n${i}]`).join('') + `amix=inputs=${voice.length}:normalize=0,volume=${voiceVol},asplit[vo][k0];[k0]apad[key]` // padded key: the ducker must not end with the last line
       + `;[${ga}:a]aresample=48000[g];[g][key]sidechaincompress=threshold=0.02:ratio=5:attack=30:release=500[gd]`
       + `;[gd][vo]amix=inputs=2:normalize=0,${master}[a]`;
   } else fc += `;[${ga}:a]${master}[a]`;
