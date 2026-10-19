@@ -47,3 +47,8 @@ body.menu:not(.paused) .small.pause{display:none}
 #lbPrompt .lbw{margin-top:5px}
 #lbPrompt .lbwal{font-size:12px;letter-spacing:0;text-transform:none;padding:5px 8px}
 .lbn{margin-top:4px;font-size:9px;line-height:1.25;color:#9a9ac8}
+
+/* privacy link: title / menu only, stays clear of the canvas */
+#privacy{display:none;position:fixed;left:10px;bottom:4px;z-index:5;font:11px "Courier New",monospace;color:#667;text-decoration:none;pointer-events:auto;touch-action:manipulation;user-select:auto;-webkit-user-select:auto}
+#privacy:hover{color:#9af0b0}
+body.menu:not(.paused) #privacy{display:block}
