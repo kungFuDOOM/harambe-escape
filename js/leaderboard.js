@@ -50,6 +50,7 @@ export function friendlyError(e) {
   if (/bad wallet/.test(m)) return 'NOT A VALID SOL ADDRESS';
   if (/slow down/.test(m)) return 'SLOW DOWN - TRY AGAIN IN A MOMENT';
   if (/rate limit/.test(m)) return 'TOO MANY SUBMISSIONS - TRY LATER';
+  if (/busy/.test(m)) return 'SERVER BUSY - TRY AGAIN LATER';
   if (e && e.server) return 'SCORE REJECTED';
   return 'OFFLINE - SCORE NOT SAVED';
 }
