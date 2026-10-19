@@ -380,8 +380,8 @@ function drawHUD() {
   ctx.drawImage(A.icon, 8, 6, 22, 22);
   drawText(ctx, 'HARAMBE', 34, 14, '#ffe66a', 8);
   drawText(ctx, String(Math.round(G.score)) + ' PTS.', 148, 14, '#ffffff', 8, 'right');
-  drawText(ctx, 'LIFE', 34, 25, '#ff9ad8', 8); segBar(60, 19, 22, r, r > 0.3 ? ['#ffd02a', '#fff09a', '#d88a10'] : ['#ff4a4a', '#ffa0a0', '#a01818'], r <= 0.3);
-  drawText(ctx, 'REST', 34, 36, '#ff9ad8', 8); drawHeart(ctx, 67, 36); drawText(ctx, 'x' + String(p.lives), 74, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
+  drawText(ctx, 'HEALTH', 34, 25, '#ff9ad8', 8); segBar(76, 19, 18, r, r > 0.3 ? ['#ffd02a', '#fff09a', '#d88a10'] : ['#ff4a4a', '#ffa0a0', '#a01818'], r <= 0.3);
+  drawText(ctx, 'LIVES', 34, 36, '#ff9ad8', 8); drawHeart(ctx, 76, 35.5, 0.85); drawText(ctx, 'x' + String(p.lives), 84, 36, '#ffe66a', 8); drawText(ctx, 'HI ' + String(Math.max(G.hiscore, Math.round(G.score))), 148, 36, '#9ab8ff', 8, 'right');
   // right panel: boss, or the enemy you last hit, else stage info
   const b = G.boss && G.ents.includes(G.boss) ? G.boss : null, le = G.lastHit && G.ents.includes(G.lastHit) && G.lastHit.state !== 'dead' && G.lastHitT > 0 ? G.lastHit : null, tgt = b || le;
   const OX = T ? (tgt ? 12 : 28) : 0, PW = T && !tgt ? 62 : 150;
