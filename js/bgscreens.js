@@ -28,7 +28,7 @@ export const SCREENS = {
       { name: 'Lion House', plate: 'zoo-lion', top: rgb(228, 196, 232), bot: rgb(238, 224, 236), lm: [['bench', 236]], lights: [], },
       { name: 'Primate World', plate: 'zoo-primate', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [], lights: [] },
       { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['lamp', 36, '#ffd890']], lights: [] },
-      { name: 'Zoo Exit', plate: 'zoo-exit', lift: 0.09, top: rgb(112, 124, 190), bot: rgb(176, 186, 224), stars: 1, fog: 0.12, warm: [255, 40, 60, 0.04], lm: [['ptext', 160, 45, 'ZOO EXIT', 'plaque'], ['cone', 150], ['cone', 168]], lights: [[48, 48, 22, [255, 205, 130], 1], [271, 48, 22, [255, 205, 130], 1]], siren: 1 },
+      { name: 'Zoo Exit', plate: 'zoo-exit', lift: 0.09, top: rgb(112, 124, 190), bot: rgb(176, 186, 224), stars: 1, fog: 0.12, warm: [255, 40, 60, 0.04], lm: [['cone', 150], ['cone', 168]], lights: [[48, 48, 22, [255, 205, 130], 1], [271, 48, 22, [255, 205, 130], 1]], siren: 1 },
     ],
   },
   street: {
@@ -37,7 +37,7 @@ export const SCREENS = {
       { name: 'Back Alley', plate: 'city-alley', top: ID, bot: ID, rain: 0.5, lm: [['dumpster', 40], ['hydrant', 210], ['pipe', 270]], lights: [] },
       { name: 'Vine Plaza', plate: 'city-plaza', top: rgb(205, 222, 255), bot: rgb(225, 235, 255), rain: 0.4, lm: [['lamp', 40, '#9fd0ff'], ['planter', 130], ['bench', 200], ['lamp', 300, '#9fd0ff']], lights: [[40, 70, 34, [140, 200, 255], 1], [300, 70, 34, [140, 200, 255], 1]] },
       { name: 'Storefront Row', plate: 'city-stores', top: rgb(255, 214, 250), bot: rgb(255, 232, 250), rain: 0.3, lm: [['hydrant', 24]], lights: [] },
-      { name: 'Diner Corner', plate: 'city-diner', top: rgb(255, 224, 190), bot: rgb(255, 236, 214), warm: [255, 150, 40, 0.06], rain: 0.2, lm: [['hydrant', 300], ['ptext', 133, 28.5, 'DINER', 'neon']], lights: [[80, 84, 40, [255, 200, 110], 1]] },
+      { name: 'Diner Corner', plate: 'city-diner', top: rgb(255, 224, 190), bot: rgb(255, 236, 214), warm: [255, 150, 40, 0.06], rain: 0.2, lm: [['hydrant', 300]], lights: [[80, 84, 40, [255, 200, 110], 1]] },
       { name: 'Bridge Approach', plate: 'city-bridge', top: rgb(180, 204, 240), bot: rgb(206, 224, 244), fog: 0.28, rain: 0.35, lm: [['barrier', 250], ['cone', 200]], lights: [] },
       { name: 'Under the Bridge', plate: 'city-underbridge', lift: 0.09, top: rgb(140, 158, 206), bot: rgb(186, 200, 226), fog: 0.38, rain: 0.2, lm: [['girders', 0], ['dumpster', 220], ['cone', 120]], lights: [[160, 40, 46, [120, 170, 255], 1]] },
       { name: 'Precinct Barricade', plate: 'city-barricade', top: rgb(210, 190, 220), bot: rgb(226, 214, 232), rain: 0.25, lm: [['cone', 200]], lights: [], siren: 1 },
@@ -59,8 +59,8 @@ export const SCREENS = {
   base: {
     tiles: [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2],
     screens: [
-      { name: 'Main Gate', plate: 'base-gate', top: ID, bot: ID, lm: [['sign', 130, 'FORT CINCINNATI', '#2a3a1a', '#e8f0b0'], ['sandbags', 230, 4]], lights: [], beams: 0 },
-      { name: 'Motor Pool', plate: 'base-motorpool', top: rgb(255, 214, 196), bot: rgb(255, 226, 210), lm: [['sign', 262, 'MOTOR POOL', '#3a3a20', '#ffe6a0'], ['cone', 40]], lights: [], beams: 0.4 },
+      { name: 'Main Gate', plate: 'base-gate', top: ID, bot: ID, lm: [['sandbags', 230, 4]], lights: [], beams: 0 },
+      { name: 'Motor Pool', plate: 'base-motorpool', top: rgb(255, 214, 196), bot: rgb(255, 226, 210), lm: [['cone', 40]], lights: [], beams: 0.4 },
       { name: 'Barracks', plate: 'base-barracks', top: rgb(238, 190, 180), bot: rgb(246, 214, 204), lm: [], lights: [[70, 90, 24, [255, 200, 110], 1]], beams: 0.6, stars: 0.2 },
       { name: 'Fuel Depot', plate: 'base-fuel', top: rgb(210, 160, 170), bot: rgb(226, 196, 196), lm: [['drums', 140, 5]], lights: [], beams: 0.8, stars: 0.4 },
       { name: 'Airfield', plate: 'base-airfield', lift: 0.13, top: rgb(160, 130, 170), bot: rgb(196, 176, 196), stars: 0.55, lm: [['sandbags', 230, 3]], lights: [], beams: 0.9 },
@@ -80,7 +80,7 @@ export const SCREENS = {
       { name: 'Glow Cave', plate: 'jungle-cave', top: rgb(110, 140, 170), bot: rgb(160, 186, 196), fog: 0.25, motes: 0.7, lm: [['rocks', 150]], lights: [[31, 109, 20, [140, 220, 255], 1], [63, 98, 20, [200, 150, 255], 1], [257, 99, 20, [200, 150, 255], 1], [288, 109, 20, [140, 220, 255], 1]], flies: 1 },
       { name: 'Waterfall Mist', plate: 'jungle-waterfall', lift: 0.08, top: rgb(190, 225, 235), bot: rgb(215, 238, 240), fog: 0.22, lm: [['rocks', 300]], lights: [] },
       { name: 'Temple Approach', plate: 'jungle-temple', top: rgb(246, 226, 160), bot: rgb(250, 238, 200), warm: [255, 200, 60, 0.06], motes: 0.6, lm: [], lights: [[160, 60, 50, [255, 210, 110], 1]] },
-      { name: 'Home Clearing', plate: 'jungle-clearing', top: rgb(255, 238, 190), bot: rgb(255, 246, 214), warm: [255, 210, 90, 0.09], motes: 0.8, lm: [['fern', 20], ['fern', 300], ['sign', 150, 'HOME', '#4a3a10', '#ffe890']], lights: [[160, 50, 60, [255, 230, 130], 1]] },
+      { name: 'Home Clearing', plate: 'jungle-clearing', top: rgb(255, 238, 190), bot: rgb(255, 246, 214), warm: [255, 210, 90, 0.09], motes: 0.8, lm: [['fern', 20], ['fern', 300]], lights: [[160, 50, 60, [255, 230, 130], 1]] },
     ],
   },
 };
