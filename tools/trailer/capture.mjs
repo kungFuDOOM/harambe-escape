@@ -13,15 +13,18 @@ const TO_BOSS = `() => { const T = window.__T, G = T.G, st = T.STAGES[G.stage];
   G.evIdx = st.events.length; G.ents = []; G.proj = []; G.lock = null; G.goT = 0; G.cam = st.length - 320 - 70; G.p.x = G.cam + 110; G.p.y = (G.lane.top + G.lane.bot) / 2; G.p.state = 'idle'; }`;
 
 const JOBS = {
-  async waves(stage, secs = 34, seed = 7) {
+  // fromEv > 0 starts just before that wave (later waves, other backdrops); flair > 0 = more chest-pounds and jump kicks
+  async waves(stage, secs = 34, seed = 7, fromEv = 0, flair = 0) {
     const g = await openGame(`debugstart&stage=${stage}`);
-    await g.page.evaluate(s => { window.__seed(s); }, seed);
+    await g.page.evaluate(([s, ev, flair]) => { window.__seed(s); const G = window.__T.G, st = window.__T.STAGES[G.stage];
+      if (ev) { G.evIdx = ev; G.cam = st.events[ev].at - 90; G.p.x = G.cam + 110; }
+      if (flair) Object.assign(window.__botState, { specialAt: 2, specialEvery: 120, jumpEvery: 25 }); }, [seed, fromEv, flair]);
     const sfx = await record(g.page, path.join(OUT, `s${stage}_waves.mp4`), sec(secs));
     await g.close(); return { sfx, errs: g.errs };
   },
   async boss(stage, secs = 26, seed = 11, hpK = 1) {
     const g = await openGame(`debugstart&stage=${stage}`);
-    await g.page.evaluate(([s, js]) => { window.__seed(s); (0, eval)('(' + js + ')')(); window.__botState.specialAt = 2; }, [seed, TO_BOSS]);
+    await g.page.evaluate(([s, js]) => { window.__seed(s); (0, eval)('(' + js + ')')(); Object.assign(window.__botState, { specialAt: 2, jumpEvery: 30 }); }, [seed, TO_BOSS]);
     const sfx = await record(g.page, path.join(OUT, `s${stage}_boss${hpK < 1 ? 'ko' : ''}.mp4`), sec(secs), {
       each: `i => { const G = window.__T.G; if (G.boss && !G.boss.__k) { G.boss.__k = 1; G.boss.hp = G.boss.max * ${hpK}; } }` });
     await g.close(); return { sfx, errs: g.errs };
@@ -47,10 +50,10 @@ const JOBS = {
       T.drawCutscene(c, { idx: ${idx}, panel: ${pnl}, t: i / 30 }); c.fillStyle = '#05040f'; c.fillRect(150, 0, 170, 14); c.fillRect(300, 160, 20, 20); }` });
     await g.close(); return { sfx, errs: g.errs };
   },
-  async card(name, secs = 2) { // cards named o_* are transparent overlays for gameplay (alpha .mov)
+  async card(name, secs = 2) { // cards named o_* / o2_* … are transparent overlays for gameplay (alpha .mov)
     const g = await openGame('');
     await g.page.evaluate(async () => { window.__cards = (await import('/tools/trailer/cards.js')).CARDS; });
-    const sfx = await record(g.page, path.join(OUT, `card_${name}.${name.startsWith('o_') ? 'mov' : 'mp4'}`), sec(secs), { draw: `i => { const T = window.__T, c = T.ctx;
+    const sfx = await record(g.page, path.join(OUT, `card_${name}.${/^o\d*_/.test(name) ? 'mov' : 'mp4'}`), sec(secs), { draw: `i => { const T = window.__T, c = T.ctx;
       c.setTransform(T.SCALE, 0, 0, T.SCALE, 0, 0); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 320, 180); window.__cards['${name}'](c, i / 30); }` });
     await g.close(); return { sfx, errs: g.errs };
   },

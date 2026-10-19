@@ -204,4 +204,10 @@ export const CARDS = {
   o_fbi: both(scene(3, 'FBI FIELD OFFICE'), bursts([[2.9, 'WHAM', 88, 62]])),
   o_army: both(scene(4, 'FORT CINCINNATI'), bursts([[2.0, 'BONK', 236, 60]])),
   o_jungle: both(scene(5, 'THE JUNGLE'), bursts([[1.8, 'SMASH', 230, 60]])),
+  // second arcade cut (build-arcade2.mjs): same splashes, bursts on that footage's knockouts
+  o2_zoo: both(scene(1, 'CINCINNATI ZOO'), bursts([[2.1, 'KA-BOOM', 230, 62]])),
+  o2_street: both(scene(2, 'VINE STREET'), bursts([[2.2, 'WHAM', 88, 62]])),
+  o2_fbi: both(scene(3, 'FBI FIELD OFFICE'), bursts([[2.8, 'POW', 236, 60]])),
+  o2_army: both(scene(4, 'FORT CINCINNATI'), bursts([[2.2, 'SMASH', 88, 62]])),
+  o2_jungle: both(scene(5, 'THE JUNGLE'), bursts([[2.0, 'BONK', 236, 60]])),
 };

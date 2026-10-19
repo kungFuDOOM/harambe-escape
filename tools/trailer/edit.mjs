@@ -14,7 +14,8 @@ export function layout(list) {
   return { segs, total: t, at: name => segs.find(s => s.clip === name).at };
 }
 
-function sfxLog(raw, clip) { // capture.mjs names its logs after the job, e.g. s4_bossko.mp4 -> boss_4_16_5_0.12.sfx.json
+function sfxLog(raw, clip) { // record() writes <clip>.sfx.json; older captures only have the job-named log, e.g. boss_4_16_5_0.12.sfx.json
+  const own = path.join(raw, clip + '.sfx.json'); if (existsSync(own)) return JSON.parse(readFileSync(own, 'utf8'));
   const m = clip.match(/^s(\d)_(waves|boss|bossko)$/);
   const f = m ? `${m[2] === 'waves' ? 'waves' : 'boss'}_${m[1]}${m[2] === 'bossko' ? '_16_5_0.12' : ''}` : clip.startsWith('cs') ? null : clip;
   const p = f && path.join(raw, f + '.sfx.json'); return p && existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : [];

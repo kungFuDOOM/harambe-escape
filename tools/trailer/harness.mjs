@@ -3,7 +3,7 @@
 // virtual time so tools/trailer/audio.mjs can rebuild the soundtrack offline with the game's own synth.
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -56,7 +56,7 @@ const INIT = `
       else if (adx < want + 12 && Math.abs(dy) < 7) {
         if (!facing) mx = Math.sign(tgt.x - p.x); else { mx = 0; my = 0; }
         if (facing && B.t - B.atkT >= 4) { B.atkT = B.t; B.n++; tap(B.n % 6 === 0 ? 'heavy' : 'atk'); }
-      } else if (facing && Math.abs(dy) < 5 && adx > 46 && adx < 78 && B.t % 45 === 0) { tap('jump'); B.jumpAtk = B.t + 7; mx = Math.sign(tgt.x - p.x); }
+      } else if (facing && Math.abs(dy) < 5 && adx > 46 && adx < 78 && B.t % (B.jumpEvery || 45) === 0) { tap('jump'); B.jumpAtk = B.t + 7; mx = Math.sign(tgt.x - p.x); }
       if (B.jumpAtk === B.t) tap('atk');
     }
     set('left', mx < 0); set('right', mx > 0); set('up', my < 0); set('down', my > 0);
@@ -110,5 +110,6 @@ export async function record(page, out, frames, { each = '() => {}', draw = null
   ff.stdin.end();
   await new Promise(r => ff.on('close', r));
   const sfx = await page.evaluate(([n, t0]) => window.__sfxlog.slice(n).map(([t, s]) => [+((t - t0) / 1000 - 1 / 30).toFixed(4), s]), [logStart, t0]);
+  writeFileSync(out.replace(/\.(mp4|mov)$/, '.sfx.json'), JSON.stringify(sfx)); // next to the clip, so a cut finds its sounds by clip name
   return sfx;
 }

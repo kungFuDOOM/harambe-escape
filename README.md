@@ -55,6 +55,8 @@ node tools/trailer/capture.mjs /tmp/trailer-raw card:zoo:1.8 card:end:6 ...   # 
 node tools/trailer/build.mjs /tmp/trailer-raw harambe-trailer.mp4             # cut list, soundtrack, 1080p encode
 PIPER=piper PIPER_VOICE=en_US-joe-medium.onnx node tools/trailer/build-arcade.mjs /tmp/trailer-raw harambe-arcade.mp4
                                                             # 45 s arcade attract-mode cut with monster-truck announcer VO (Piper TTS + tools/trailer/voice.mjs)
+PIPER=piper PIPER_VOICE=en_US-joe-medium.onnx node tools/trailer/build-arcade2.mjs /tmp/trailer-raw2 harambe-arcade2.mp4
+                                                            # second arcade cut: same cards + narration, new footage (capture jobs listed in the script)
 ```
 
 By kungFuDOOM.
