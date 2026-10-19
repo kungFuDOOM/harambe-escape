@@ -28,3 +28,8 @@ const src = readFileSync(new URL('../js/input.js', import.meta.url), 'utf8');
 test('every end path is wired', () => { for (const s of ["'pointercancel'", "'lostpointercapture'", "'touchcancel'", "'visibilitychange'", "'blur'", "'gesturestart'", "'contextmenu'"]) assert.ok(src.includes(s), s); });
 const main = readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 test('transitions release touch input', () => { for (const f of ['function setMode', 'function openPause', 'function startStage', 'function startCutscene', 'function resume']) { const i = main.indexOf(f); assert.match(main.slice(i, i + 120), /releaseTouch/, f); } });
+test('stickDirs: slightly off-axis thumb walks straight, real diagonals still work', () => {
+  assert.deepEqual(stickDirs(40, 12), { left: false, right: true, up: false, down: false });
+  assert.deepEqual(stickDirs(40, 25), { left: false, right: true, up: false, down: true });
+  assert.deepEqual(stickDirs(-30, -30), { left: true, right: false, up: true, down: false });
+});

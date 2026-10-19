@@ -15,4 +15,9 @@ export function createCore() {
   };
 }
 // stick vector -> direction flags (dead zone th px)
-export function stickDirs(dx, dy, th = 12) { return { left: dx < -th, right: dx > th, up: dy < -th, down: dy > th }; }
+// The minor axis only counts once it is at least half the major one, so a slightly off-axis thumb walks straight along the lane instead of drifting up/down; real diagonals (>~27deg) still work.
+export function stickDirs(dx, dy, th = 12, bias = 0.5) {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  const X = ax >= th && (ax >= ay ? true : ax >= ay * bias), Y = ay >= th && (ay >= ax ? true : ay >= ax * bias);
+  return { left: X && dx < 0, right: X && dx > 0, up: Y && dy < 0, down: Y && dy > 0 };
+}

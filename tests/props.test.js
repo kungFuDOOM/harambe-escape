@@ -18,7 +18,7 @@ test('every code-drawn prop kind used by the screens has a painted sprite (excep
   const kinds = new Set(); for (const k of Object.values(SCREENS)) for (const s of k.screens) for (const l of s.lm) kinds.add(l[0]);
   for (const k of kinds) { if (k === 'bus' || k === 'ptext') continue; assert.ok(need[k], 'no sprite mapping for ' + k); for (const n of need[k]) assert.ok(meta[n], k + ' -> ' + n); }
 });
-test('the WELCOME hanging sign keeps its gate-height position data', () => { const z = SCREENS.zoo.screens[0].lm.find(l => l[0] === 'hsign'); assert.equal(z[2], 'WELCOME'); });
+test('the WELCOME sign is painted into the Entrance Plaza plate (no code-drawn sign on top)', () => { const z = SCREENS.zoo.screens[0]; assert.equal(z.plate, 'zoo-plaza'); assert.ok(!z.lm.some(l => /sign/.test(l[0]))); });
 test('mirrored plate reuse: no two neighbouring screens show the same plate image (flip counts as the same image)', () => {
   for (const [kind, S] of Object.entries(SCREENS)) for (let i = 1; i < S.screens.length; i++) { const a = S.screens[i - 1], b = S.screens[i]; if (a.plate && b.plate) assert.notEqual(a.plate, b.plate, kind + ' ' + i); }
 });

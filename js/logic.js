@@ -47,6 +47,8 @@ export function validateStage(st, enemyTypes, bossTypes) {
     last = ev.at;
     if (ev.at > st.length) errs.push('event beyond length');
     for (const e of ev.wave) if (!enemyTypes[e.t]) errs.push('unknown enemy ' + e.t);
+    for (const ph of ev.phases || []) for (const e of ph) if (!enemyTypes[e.t]) errs.push('unknown enemy ' + e.t);
+    if (ev.haz && !['drop', 'car', 'roll', 'spot'].includes(ev.haz.kind)) errs.push('unknown hazard ' + ev.haz.kind);
   }
   if (!bossTypes[st.boss]) errs.push('unknown boss ' + st.boss);
   return errs;
