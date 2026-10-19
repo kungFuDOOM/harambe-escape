@@ -24,7 +24,7 @@ export const SCREENS = {
     tiles: [0, 1, 2, 3, 0, 1, 2, 3, 0],
     screens: [
       { name: 'Entrance Plaza', plate: 'zoo-plaza', top: ID, bot: ID, lm: [], lights: [] },
-      { name: 'Food Court', plate: 'zoo-foodcourt', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['bench', 250]], lights: [[60, 62, 26, [255, 190, 90], 1], [170, 62, 26, [255, 190, 90], 1]] },
+      { name: 'Food Court', plate: 'zoo-foodcourt', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['bench', 250]], lights: [] },
       { name: 'Lion House', plate: 'zoo-lion', top: rgb(228, 196, 232), bot: rgb(238, 224, 236), lm: [['bench', 236]], lights: [], },
       { name: 'Primate World', plate: 'zoo-primate', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [], lights: [] },
       { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['lamp', 36, '#ffd890']], lights: [] },

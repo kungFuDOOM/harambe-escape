@@ -13,10 +13,10 @@ test('every sprite rect is sane and sign/plaque faces sit inside their sprite', 
   for (const [k, r] of Object.entries(meta)) { assert.ok(r.length === 4 || r.length === 8, k); assert.ok(r[2] > 8 && r[3] > 8, k); if (r.length === 8) assert.ok(r[4] >= 0 && r[5] >= 0 && r[4] + r[6] <= r[2] && r[5] + r[7] <= r[3], k + ' face'); }
   for (const s of ['sign_s', 'sign_m', 'sign_l', 'hsign', 'diner']) assert.equal(meta[s].length, 8, s);
 });
-test('every code-drawn prop kind used by the screens has a painted sprite (except water/bus/lights which stay code)', () => {
+test('every code-drawn prop kind used by the screens has a painted sprite (except water/ptext)', () => {
   const need = { sign: ['sign_s', 'sign_m', 'sign_l'], hsign: ['hsign'], bush: ['bush_a'], tree: ['tree'], stand: ['stand_a', 'stand_b'], bench: ['bench'], lamp: ['lamp'], cone: ['cone'], dumpster: ['dumpster'], hydrant: ['hydrant'], pipe: ['pipe'], planter: ['planter'], diner: ['diner'], girders: ['girders'], barrier: ['barrier'], plant: ['plant'], seal: ['seal'], cubicle: ['cubicle_a'], cooler: ['cooler'], door: ['door_a'], glass: ['glass'], table: ['table'], flag: ['flag'], cart: ['cart'], elevator: ['elevator'], curtain: ['curtain'], gatepost: ['gatepost'], sandbags: ['sandbags3', 'sandbags4'], jeep: ['jeep'], drums: ['drum_a', 'drum_b'], tent: ['tent'], tank: ['tank'], wire: ['wire'], bunker: ['bunker'], hq: ['hq'], fern: ['fern_a'], vines: ['vine_s', 'vine_m', 'vine_l'], rocks: ['rock_a'], pillar: ['pillar_t', 'pillar_s'], totem: ['totem'], glowflower: ['flower_a', 'flower_b'] };
   const kinds = new Set(); for (const k of Object.values(SCREENS)) for (const s of k.screens) for (const l of s.lm) kinds.add(l[0]);
-  for (const k of kinds) { if (k === 'bus' || k === 'ptext') continue; assert.ok(need[k], 'no sprite mapping for ' + k); for (const n of need[k]) assert.ok(meta[n], k + ' -> ' + n); }
+  for (const k of kinds) { if (k === 'ptext') continue; assert.ok(need[k], 'no sprite mapping for ' + k); for (const n of need[k]) assert.ok(meta[n], k + ' -> ' + n); }
 });
 test('the WELCOME sign is painted into the Entrance Plaza plate (no code-drawn sign on top)', () => { const z = SCREENS.zoo.screens[0]; assert.equal(z.plate, 'zoo-plaza'); assert.ok(!z.lm.some(l => /sign/.test(l[0]))); });
 test('mirrored plate reuse: no two neighbouring screens show the same plate image (flip counts as the same image)', () => {
@@ -27,8 +27,9 @@ test('Stage 2 car hazards are painted sprites (3 variants), not code shapes', ()
   assert.ok(fs.statSync(new URL('cars.webp', dir)).size < 60 * 1024);
   const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.match(src, /A\.sp\[CARS/); assert.doesNotMatch(src, /hatchback/);
 });
-test('hazards, pickups, zoo tram and string lights are painted sprites in haz.json', () => {
-  const m = JSON.parse(fs.readFileSync(new URL('haz.json', dir))); for (const k of ['boulder', 'coconut', 'cabinet', 'searchlight', 'gem', 'rage', 'oneup', 'bus', 'lights']) { assert.ok(m[k], k); assert.ok(m[k][0] + m[k][2] <= 1024, k); }
+test('hazards and pickups are painted sprites in haz.json', () => {
+  const m = JSON.parse(fs.readFileSync(new URL('haz.json', dir))); for (const k of ['boulder', 'coconut', 'cabinet', 'searchlight', 'gem', 'rage', 'oneup']) { assert.ok(m[k], k); assert.ok(m[k][0] + m[k][2] <= 1024, k); }
+  assert.ok(!m.bus && !m.lights, 'tram/lights belong in the Food Court plate, not haz');
   assert.ok(fs.statSync(new URL('haz.webp', dir)).size < 80 * 1024);
   const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.doesNotMatch(src, /'1UP'/); assert.doesNotMatch(src, /c\.arc\(0, 0, 14/);
 });
