@@ -3,6 +3,7 @@
 //         'drama' = slower, deeper, ominous read for the story beats;
 //         'fine'  = fast small-print read; echo: true adds the big stadium repeats (SATURDAY! saturday... saturday...).
 // env: PIPER (binary, default "piper"), PIPER_VOICE (.onnx voice model, e.g. en_US-joe-medium.onnx)
+// Names the voice gets wrong go in as phonemes: Piper reads [[ ... ]] as raw IPA (see HARAMBE).
 import { existsSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -12,12 +13,13 @@ const STYLE = {
   shout: { tts: ['--length-scale', '0.92', '--noise-scale', '0.9', '--noise-w-scale', '1.0'],
     fx: 'asetrate=22050*0.92,aresample=22050,atempo=1.06,highpass=f=90,lowpass=f=7500,equalizer=f=2500:t=q:w=1:g=5,'
       + 'acompressor=threshold=-28dB:ratio=10:attack=3:release=60:makeup=14dB,volume=1.4,asoftclip=type=tanh,aecho=0.8:0.6:45:0.25' },
-  drama: { tts: ['--length-scale', '1.25', '--noise-scale', '0.7', '--noise-w-scale', '0.9', '--sentence-silence', '0.3'], // slow, low, ominous
-    fx: 'asetrate=22050*0.86,aresample=22050,atempo=1.04,highpass=f=70,lowpass=f=6500,equalizer=f=180:t=q:w=1:g=4,'
+  drama: { tts: ['--length-scale', '1.12', '--noise-scale', '0.6', '--noise-w-scale', '0.8', '--sentence-silence', '0.45'], // slow, low, ominous (but still legible)
+    fx: 'asetrate=22050*0.94,aresample=22050,atempo=1.02,highpass=f=70,lowpass=f=6500,equalizer=f=180:t=q:w=1:g=4,'
       + 'acompressor=threshold=-28dB:ratio=8:attack=5:release=120:makeup=12dB,volume=1.2,asoftclip=type=tanh,aecho=0.8:0.6:60:0.3' },
   fine: { tts: ['--length-scale', '0.62', '--noise-scale', '0.5'],
     fx: 'highpass=f=150,lowpass=f=6000,acompressor=threshold=-24dB:ratio=6:attack=5:release=80:makeup=8dB,volume=0.55' },
 };
+export const HARAMBE = '[[ hʌɹˈɑːmbeɪ ]]'; // hə-RAHM-bay (a full 'huh' so the first syllable survives the fx); spelled out, espeak says "HAIR-amb"
 const ECHO = ',apad=pad_dur=1.6,aecho=0.9:0.8:300|600|900|1200:0.6|0.42|0.28|0.16';
 
 export function narrate(lines, cacheDir) {
