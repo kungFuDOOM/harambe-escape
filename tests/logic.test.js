@@ -111,3 +111,15 @@ test('every walking character has one painted passing pose (anims.pass) that is 
     assert.equal(f.ay, f.h, name); assert.ok(Math.abs(f.h - ref.h) <= 3, name + ' passing pose must be as tall as the stride (head level, no pop): ' + f.h + ' vs ' + ref.h);
   }
 });
+test('opposite-leg contact frames (anims.contactB) are pixel-aligned copies of the stride they alternate with', () => {
+  const atlas = JSON.parse(fs.readFileSync(asset('atlas.json')));
+  const src = fs.readFileSync(new URL('../js/sprites.js', import.meta.url), 'utf8'); let n = 0;
+  for (const [name, m] of Object.entries(atlas)) {
+    if (!m.anims.contactB) continue; n++;
+    const poses = src.match(new RegExp(name + ': \\{ poses: \\[([\\d, ]+)\\]'))[1].split(',').map(Number);
+    const b = m.frames[m.anims.contactB[0]], s = m.frames[poses.at(-1)];
+    assert.deepEqual([b.w, b.h, b.ax, b.ay], [s.w, s.h, s.ax, s.ay], name);
+    assert.ok(m.anims.pass, name + ' contactB needs a passing pose between the two contacts');
+  }
+  assert.ok(n >= 8, 'contactB frames: ' + n);
+});

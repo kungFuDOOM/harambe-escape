@@ -80,9 +80,11 @@ def build_frame(name, m, sheet):
 
 def main(names):
     meta = json.load(open(META))
-    for name in names or sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.jpg') and '__' not in f):
+    for name in names or sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.jpg') and '__' not in f and f != 'harambe.jpg'):
         m = meta[name]; path = os.path.join(ROOT, 'assets', m['img'])
         sheet = Image.open(path).convert('RGBA')
+        from build_walk_contactB import drop_last
+        sheet = drop_last(m, sheet, 'contactB')  # generated after the pass frame; rebuilt by build_walk_contactB.py
         if 'pass' in m['anims']:  # idempotent: drop the previous pass frame (always the last frame, at the right edge)
             i = m['anims']['pass'][0]; f = m['frames'][i]
             assert i == len(m['frames']) - 1 and f['x'] + f['w'] == sheet.width, name
@@ -94,11 +96,6 @@ def main(names):
         ns = Image.new('RGBA', (W, H), (0, 0, 0, 0)); ns.paste(sheet, (0, 0)); ns.paste(fr, (sheet.width + 2, 0))
         m['frames'].append({'x': sheet.width + 2, 'y': 0, 'w': fr.width, 'h': fr.height, 'ax': ax, 'ay': fr.height})
         m['anims']['pass'] = [len(m['frames']) - 1]
-        if name == 'harambe':  # contact, down, PASSING, up. The painted pose has the NEAR leg swinging forward, so it may only replace the
-            # passing frames that lead into frame 24 (near leg forward): 32/33. Using it before frame 30 (far leg forward) too put the same
-            # leg forward twice in a row = a step-hop. 27/28 (far leg swinging) stay until a far-leg passing pose is painted.
-            P = m['anims']['pass'][0]; base = list(range(24, 36))
-            m['anims']['walk'] = [P if j in (8, 9) else base[j] for j in range(12)]
         ns.save(path, optimize=True)
         print(f"{name}: pass frame {fr.width}x{fr.height} ax {ax} -> index {m['anims']['pass'][0]}")
     with open(META, 'w') as fh: json.dump(meta, fh, separators=(',', ':'))

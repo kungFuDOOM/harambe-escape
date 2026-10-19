@@ -45,7 +45,6 @@ function sprWhite(ctx, name, x, y) {
 
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
-export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
 /** Body bob for one step, phase 0..1 with the footfall at 0. Down-only: the torso settles at most `amp` device px just after
  * the foot lands (lowest at phase LOW, the frame after contact) and is back at standing height through the passing pose,
  * never above it, so nothing pops up (an up-and-down bob plus a sharp landing dip read as skipping). Smooth cosine, no spike.
@@ -55,16 +54,24 @@ export function stepBob(ph, amp, k = 1) {
   ph = ((ph % 1) + 1) % 1;
   return amp * (0.5 + 0.5 * Math.cos((ph - LOW) * Math.PI * 2)) * k;
 }
-/** Harambe's walk phase (0..12, contacts on 0 and 6) from ground distance travelled. */
-export const harambePhase = wd => ((wd / WALK_PX) % 12 + 12) % 12;
+/** Harambe's walk pose from ground distance travelled (logic px). The 6-frame cycle (contact A, down, passing, contact B, down,
+ * passing; tools/ai-art/build_harambe_walk.py) is two steps of atlas harambe.walkStep px. Frame j shows from walkAt[j-1] to walkAt[j]:
+ * thresholds follow the planted foot so it stays put on the ground instead of skating. Returns { i: 0..5, ph: step phase 0..1 }. */
+export function harambeWalk(wd) {
+  const m = A.atlas.harambe, step = m.walkStep || 29, at = m.walkAt || [1.4, 11.4, 24.5, 30.4, 40.4, 53.5];
+  const d = ((wd % (2 * step)) + 2 * step) % (2 * step);
+  let i = at.findIndex(v => d < v); if (i < 0) i = 0; // past the last threshold = back on contact A
+  return { i, ph: (d % step) / step };
+}
+export const isPassing = i => i === 2 || i === 5;
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0, bob = 0;
   switch (state) {
-    case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
-      anim = 'walk'; i = harambePhase(s.wd != null ? s.wd : t * 82);
-      bob = stepBob((i % 6) / 6, 2, s.ramp ?? 1); break; } // settles 2 device px (under 1 game px) after each footfall, eased in with the start-of-walk ramp
+    case 'walk': { // 6-frame two-step cycle (0 and 3 are the contact poses), driven by ground distance so the planted foot never slides
+      const w = harambeWalk(s.wd != null ? s.wd : t * 82); anim = 'walk'; i = w.i;
+      bob = stepBob(w.ph, 2, s.ramp ?? 1); break; } // settles 2 device px (under 1 game px) after each footfall, eased in with the start-of-walk ramp
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
@@ -73,8 +80,8 @@ export function drawHarambe(ctx, s) {
     case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.5 ? 2 : 1); break;
     case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
     default:
-      if (s.stopT > 0 && s.stopFrom != null) { // walk -> idle: finish the step onto the next contact pose instead of snapping out mid-stride
-        const to = s.stopFrom < 6 ? 6 : 12, k = 1 - s.stopT / STOP_T; anim = 'walk'; i = (s.stopFrom + (to - s.stopFrom) * k) % 12; bob = stepBob((i % 6) / 6, 2, 1 - k); break; }
+      if (s.stopT > 0 && s.stopFrom != null) { // walk -> idle mid-passing: put the swinging foot down (next contact pose) before standing
+        anim = 'walk'; i = (s.stopFrom + 1) % 6; break; }
       anim = 'idle'; i = (t * 3) % 4;
   }
   blitFrame(ctx, 'harambe', anim, i, x, y - z, face, flash, bob);
@@ -96,11 +103,17 @@ export const ENEMY_WALK = {
 /** Which atlas frame + body bob an enemy shows at ground distance `wd`. Phase 0 = footfall.
  * With a painted passing pose (anims.pass, tools/ai-art/build_walk_pass.py) the cycle is stride, passing, stride, passing:
  * the widest stride covers the footfall half of each step and the passing pose (foot lifted, legs apart) the other half.
- * Without one it falls back to a ping-pong from the standing pose to the widest stride. */
+ * Every painted stride has the near leg forward; where the atlas has anims.contactB (the same stride with the leg shading swapped,
+ * tools/ai-art/build_walk_contactB.py) every other step uses it, so the legs alternate: A, passing, B, passing.
+ * Without a passing pose it falls back to a ping-pong from the standing pose to the widest stride. */
 export function enemyWalkPose(type, wd, anims) {
   const w = ENEMY_WALK[type] || { poses: [0], step: 20 }, n = w.poses.length, ph = ((wd / w.step) % 1 + 1) % 1;
   const pass = anims && anims.pass && anims.pass[0];
-  if (pass != null) return { frame: ph >= 0.25 && ph < 0.75 ? pass : w.poses[n - 1], ph };
+  if (pass != null) {
+    // a step starts at a footfall: [0,.25) is that contact, [.75,1) already the next one (the other leg)
+    const k = Math.floor(wd / w.step + 0.25), B = anims.contactB && anims.contactB[0];
+    return { frame: ph >= 0.25 && ph < 0.75 ? pass : (B != null && k % 2 ? B : w.poses[n - 1]), ph };
+  }
   const tri = Math.abs(1 - 2 * ph); // 1 at the footfall (widest stride), 0 at the passing (standing) pose
   return { frame: w.poses[Math.min(n - 1, Math.round(tri * (n - 1)))], ph };
 }

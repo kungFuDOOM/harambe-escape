@@ -4,7 +4,7 @@ import { input } from './input.js';
 import { audio } from './audio.js';
 import { drawBG, laneOf } from './bg.js';
 import { loadAssets, A } from './assets.js';
-import { shadow, harambePhase, STOP_T, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
+import { shadow, harambeWalk, isPassing, STOP_T, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
@@ -221,7 +221,7 @@ function updatePlayer(dt) {
     const mx = ax.x * 82 * dn * (0.35 + 0.65 * p.ramp), my = ax.y * 52 * dn * (0.35 + 0.65 * p.ramp);
     const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
     if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') { p.wd = 0; p.stopT = 0; } // every walk starts on the contact pose, never mid-stride
-    if (p.state === 'idle' && was === 'walk') { const ph = harambePhase(p.wd || 0); if (ph % 6 > 0.75) { p.stopFrom = ph; p.stopT = STOP_T; } } // let go mid-stride: settle onto the next contact pose
+    if (p.state === 'idle' && was === 'walk') { const w = harambeWalk(p.wd || 0); if (isPassing(w.i)) { p.stopFrom = w.i; p.stopT = STOP_T; } } // let go mid-stride: settle onto the next contact pose
   }
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
   if (input.take('atk')) {
