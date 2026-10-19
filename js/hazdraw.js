@@ -1,6 +1,7 @@
-// Drawing for stage hazards, telegraph markers, loot and the elite ring. All code-drawn from rects/ellipses (no new art).
+// Drawing for stage hazards, telegraph markers, loot and the elite ring. Cars are painted sprites; the rest is still code-drawn from rects/ellipses.
 import { drawProp, drawBanana, drawHeart, drawText, shadow } from './sprites.js';
 import { W } from './logic.js';
+import { A } from './assets.js';
 
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 const pulse = t => 0.55 + 0.45 * Math.abs(Math.sin(t * 9));
@@ -20,13 +21,10 @@ export function drawHazMarkers(c, haz, cam, t, lane) {
       c.fillStyle = hot ? 'rgba(255,80,60,.2)' : 'rgba(255,250,210,.18)'; c.beginPath(); c.moveTo(x - 3, 0); c.lineTo(x + 3, 0); c.lineTo(x + 24, h.y); c.lineTo(x - 24, h.y); c.fill(); }
   }
 }
-function car(c, x, y, dir, col) { // 56x20 pixel-ish hatchback, drawn facing +x and mirrored
-  c.save(); c.translate(Math.round(x), Math.round(y)); c.scale(dir, 1);
-  R(c, -28, -22, 56, 17, '#0c0c14'); R(c, -27, -21, 54, 15, col); R(c, -27, -21, 54, 2, 'rgba(255,255,255,.35)'); R(c, -27, -9, 54, 3, 'rgba(0,0,0,.3)');
-  R(c, -12, -31, 26, 11, '#0c0c14'); R(c, -11, -30, 24, 10, col); R(c, -9, -29, 9, 8, '#9fd8ff'); R(c, 2, -29, 9, 8, '#9fd8ff'); R(c, -9, -29, 9, 2, '#e8f8ff');
-  R(c, 25, -17, 3, 4, '#ffee9a'); R(c, -28, -17, 2, 4, '#ff3a3a'); R(c, 8, -12, 4, 2, 'rgba(0,0,0,.4)');
-  for (const wx of [-18, 14]) { R(c, wx - 1, -9, 12, 10, '#0c0c14'); R(c, wx + 1, -7, 8, 8, '#2a2a32'); R(c, wx + 3, -5, 4, 4, '#9a9aa6'); }
-  c.restore();
+const CARS = ['car_a', 'car_b', 'car_c']; // painted 3x sprites (assets/props/cars.webp, tools/ai-art/build_cars.py), drawn facing +x and mirrored
+function car(c, x, y, dir, v) {
+  const s = A.sp[CARS[v % CARS.length] || CARS[0]] || A.sp.car_a; if (!s) return; const [sx, sy, w, h] = s.r;
+  c.save(); c.translate(Math.round(x), Math.round(y) + 1); c.scale(dir, 1); c.drawImage(s.im, sx, sy, w, h, -w / 6, -h / 3, w / 3, h / 3); c.restore();
 }
 function boulder(c, x, y, t) { c.save(); c.translate(Math.round(x), Math.round(y) - 13); c.rotate(t * 3.2);
   c.fillStyle = '#10100e'; c.beginPath(); c.arc(0, 0, 14, 0, 7); c.fill(); c.fillStyle = '#7a705e'; c.beginPath(); c.arc(0, 0, 12.5, 0, 7); c.fill();
@@ -40,7 +38,7 @@ export function hazardEntries(c, haz, cam, t) {
   for (const h of haz) {
     if (h.k === 'drop') { if (h.t < 0.95) continue; out.push({ y: h.y, f: () => { const x = h.x - cam, z = h.z || 0; shadow(c, x, h.y, 18);
       if (h.obj === 'cabinet') cabinet(c, x, h.y - z); else if (h.obj === 'coconut') coconut(c, x, h.y - z); else drawProp(c, { kind: 'crate', x, y: h.y - z }); } }); }
-    else if (h.k === 'car' && h.t > 1.1) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 60); car(c, h.x - cam, h.y, h.dir, h.col || '#c83a2a'); } });
+    else if (h.k === 'car' && h.t > 1.1) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 60); car(c, h.x - cam, h.y, h.dir, h.v | 0); } });
     else if (h.k === 'roll' && h.t > 0.9) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 30); boulder(c, h.x - cam, h.y, h.t); } });
   }
   return out;

@@ -22,3 +22,8 @@ test('the WELCOME sign is painted into the Entrance Plaza plate (no code-drawn s
 test('mirrored plate reuse: no two neighbouring screens show the same plate image (flip counts as the same image)', () => {
   for (const [kind, S] of Object.entries(SCREENS)) for (let i = 1; i < S.screens.length; i++) { const a = S.screens[i - 1], b = S.screens[i]; if (a.plate && b.plate) assert.notEqual(a.plate, b.plate, kind + ' ' + i); }
 });
+test('Stage 2 car hazards are painted sprites (3 variants), not code shapes', () => {
+  const m = JSON.parse(fs.readFileSync(new URL('cars.json', dir))); for (const k of ['car_a', 'car_b', 'car_c']) { assert.ok(m[k], k); assert.ok(m[k][2] / 3 >= 56 && m[k][2] / 3 <= 72, k + ' width'); }
+  assert.ok(fs.statSync(new URL('cars.webp', dir)).size < 60 * 1024);
+  const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.match(src, /A\.sp\[CARS/); assert.doesNotMatch(src, /hatchback/);
+});

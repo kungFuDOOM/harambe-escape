@@ -340,7 +340,7 @@ function bossPick(e, dx, dy) {
 function spawnHaz(spec) {
   const L = G.lane, p = G.p, rowY = () => L.top + 8 + Math.random() * (L.bot - L.top - 16);
   if (spec.kind === 'drop') { const near = Math.random() < 0.45, x = clamp(near ? p.x + (Math.random() - 0.5) * 60 : G.cam + 30 + Math.random() * (W - 60), G.cam + 24, G.cam + W - 24); G.haz.push({ k: 'drop', obj: spec.obj || 'crate', x, y: L.top + 4 + Math.random() * (L.bot - L.top - 8), t: 0, z: 150 }); }
-  else if (spec.kind === 'car') { const dir = Math.random() < 0.5 ? 1 : -1; G.haz.push({ k: 'car', y: rowY(), dir, x: dir > 0 ? G.cam - 70 : G.cam + W + 70, t: 0, hit: new Set(), col: ['#c83a2a', '#2a6ac8', '#e0b020', '#3a9a5a'][(Math.random() * 4) | 0] }); }
+  else if (spec.kind === 'car') { const dir = Math.random() < 0.5 ? 1 : -1; G.haz.push({ k: 'car', y: rowY(), dir, x: dir > 0 ? G.cam - 70 : G.cam + W + 70, t: 0, hit: new Set(), v: (Math.random() * 3) | 0 }); }
   else if (spec.kind === 'roll') G.haz.push({ k: 'roll', y: rowY(), dir: -1, x: G.cam + W + 40, t: 0, hit: new Set() });
   else if (spec.kind === 'spot' && G.haz.filter(h => h.k === 'spot').length < 2) G.haz.push({ k: 'spot', x: G.cam + W * 0.7, y: (L.top + L.bot) / 2, t: 0, seen: 0, cool: 1.5, life: 16, flash: 0 });
 }
