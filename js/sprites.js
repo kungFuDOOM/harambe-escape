@@ -83,7 +83,7 @@ export function drawKid(ctx, x, y, pose = 'kid_idle', face = 1) {
 export function drawRubble(ctx, r) { // broken crate/barrel left behind for a moment, blinking out
   if (r.t > 1.1 && Math.floor(r.t * 16) % 2) return; aiProp(ctx, r.kind === 'crate' ? 'crate_broken' : 'barrel_broken', r.x, r.y);
 }
-export function drawHeart(ctx, x, y) { aiProp(ctx, 'heart', x, y); }
+export function drawHeart(ctx, x, y, s = 1) { aiProp(ctx, 'heart', x, y, s); }
 
 export function drawProp(ctx, p) {
   const n = p.kind === 'crate' ? 'crate' : 'barrel';
