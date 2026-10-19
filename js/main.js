@@ -8,6 +8,8 @@ import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubb
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
+import { fetchTop, getName, getLast, setLast } from './leaderboard.js';
+import { openPrompt, promptOpen } from './lbui.js';
 import { makeSave, keepFurthest, writeSave, readSave, clearSave } from './save.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -25,7 +27,7 @@ window.__input = input; window.__game = G; window.__stages = STAGES; // QA hooks
 function newPlayer() {
   return { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, vx: 0, vy: 0, vz: 0, face: 1, hp: 100, max: 100, lives: 3, state: 'idle', t: 0, st: 0, n: 0, comboT: 0, buf: false, inv: 0, hit: new Set(), w: 16 };
 }
-function setMode(m) { input.releaseTouch(); G.mode = m; G.mt = 0; }
+function setMode(m) { input.releaseTouch(); G.mode = m; G.mt = 0; if (m === 'gameover' || m === 'outro') G.prompted = false; }
 
 // ---------- save / menus ----------
 // Stage Continue should land on: once the boss is dead (stageclear / cutscene) that is the NEXT stage, never the one just beaten.
@@ -45,6 +47,7 @@ function titleMenu() {
   const sv = G.save, items = [];
   if (sv) items.push({ label: 'CONTINUE', sub: 'STAGE ' + (sv.stage + 1) + ' - ' + STAGES[sv.stage].name, tall: true, act: () => { audio.init(); audio.sfx('select'); G.menu = null; loadGame(sv); } });
   items.push({ label: sv ? 'NEW GAME / START OVER' : 'NEW GAME', act: () => { if (sv) G.menu = confirmMenu(titleMenu, startNew); else startNew(); } });
+  items.push({ label: 'LEADERBOARD', act: () => openLB('title') });
   return mkMenu('title', items);
 }
 function pauseMenu() {
@@ -52,8 +55,8 @@ function pauseMenu() {
     { label: 'START OVER', act: () => { G.menu = confirmMenu(pauseMenu, () => { clearSave(); G.paused = false; G.menu = null; newGame(); }); } }], resume);
 }
 function mkMenu(kind, items, back) {
-  const w = kind === 'title' ? 150 : 140, gap = 4; let y = kind === 'title' ? 104 : kind === 'pause' ? 50 : 78;
-  for (const it of items) { const h = it.tall ? 24 : 18; it.r = { x: (W - w) / 2, y, w, h }; y += h + gap; }
+  const w = kind === 'title' ? 150 : 140, gap = kind === 'title' ? 2 : 4; let y = kind === 'title' ? 101 : kind === 'pause' ? 50 : 78;
+  for (const it of items) { const h = kind === 'title' ? (it.tall ? 22 : 16) : it.tall ? 24 : 18; it.r = { x: (W - w) / 2, y, w, h }; y += h + gap; }
   return { kind, items, sel: kind === 'confirm' ? 0 : 0, back };
 }
 function resume() { input.releaseTouch(); G.paused = false; G.menu = null; audio.play('s', STAGES[G.stage].music); }
@@ -62,8 +65,8 @@ function menuAct(m, i) { audio.sfx('select'); m.items[i].act(); input.anyPress()
 function menuStep() {
   const m = G.menu; if (!m) return;
   const n = m.items.length;
-  if (input.take('up')) m.sel = (m.sel + n - 1) % n;
-  if (input.take('down')) m.sel = (m.sel + 1) % n;
+  if (input.take('up') || (m.kind === 'lb' && input.take('left'))) m.sel = (m.sel + n - 1) % n;
+  if (input.take('down') || (m.kind === 'lb' && input.take('right'))) m.sel = (m.sel + 1) % n;
   if (input.take('atk') || input.take('jump')) { menuAct(m, m.sel); return; }
   if (input.take('start')) { if (m.kind === 'title') menuAct(m, m.sel); else if (m.back) { const b = m.back(); if (b) G.menu = b; } }
 }
@@ -74,8 +77,8 @@ function drawMenu(m) {
     panel(r.x, r.y, r.w, r.h);
     if (on) { ctx.fillStyle = '#ffe03a'; ctx.fillRect(r.x - 2, r.y + 2, 1, r.h - 4); ctx.fillRect(r.x + r.w + 1, r.y + 2, 1, r.h - 4); ctx.fillRect(r.x + 2, r.y - 2, r.w - 4, 1); ctx.fillRect(r.x + 2, r.y + r.h + 1, r.w - 4, 1); }
     const col = it.danger ? (on ? '#ff8a8a' : '#e06a6a') : (on ? '#ffe03a' : '#ffffff');
-    if (it.sub) { drawText(ctx, it.label, W / 2, r.y + 9, col, 8, 'center'); drawText(ctx, it.sub, W / 2, r.y + 19, '#9af0b0', 7, 'center'); }
-    else drawText(ctx, it.label, W / 2, r.y + r.h / 2 + 3, col, 8, 'center');
+    if (it.sub) { drawText(ctx, it.label, r.x + r.w / 2, r.y + 9, col, 8, 'center'); drawText(ctx, it.sub, r.x + r.w / 2, r.y + 19, '#9af0b0', 7, 'center'); }
+    else drawText(ctx, it.label, r.x + r.w / 2, r.y + r.h / 2 + 3, col, 8, 'center');
   });
   return T;
 }
@@ -93,10 +96,57 @@ function menuPointer(e) {
   return true;
 }
 
+
+// ---------- global leaderboard ----------
+function openLB(from) {
+  G.lbPrev = from; G.lbMt = G.mt; G.lb = { rows: [], status: 'loading' }; G.lastRun = G.lastRun || getLast();
+  G.menu = mkLbMenu(); G.mode = 'lb'; G.mt = 0; refreshLB();
+}
+function mkLbMenu() {
+  const m = { kind: 'lb', sel: 1, items: [{ label: 'REFRESH', act: () => refreshLB(), r: { x: 62, y: 154, w: 90, h: 16 } }, { label: 'BACK', act: closeLB, r: { x: 168, y: 154, w: 90, h: 16 } }], back: () => { closeLB(); return null; } };
+  return m;
+}
+function closeLB() {
+  const prev = G.lbPrev || 'title'; input.releaseTouch();
+  if (prev === 'title') { G.menu = titleMenu(); setMode('title'); } else { G.menu = null; G.mode = prev; G.mt = G.lbMt || 0; }
+}
+function refreshLB() {
+  const lb = G.lb = { rows: G.lb ? G.lb.rows : [], status: 'loading' };
+  fetchTop(10).then(rows => { if (G.lb === lb) { lb.rows = rows; lb.status = 'ok'; } }).catch(() => { if (G.lb === lb) lb.status = 'error'; });
+}
+// Ask for a name once per finished run (game over / final victory). Never blocks: SKIP, Esc, or no network just carries on.
+function askScore(won) {
+  G.prompted = true; const sc = Math.round(G.score);
+  if (sc <= 0 || qs.has('nolb')) return;
+  openPrompt({ score: sc, stage: Math.min(5, G.stage + 1), won, title: won ? 'YOU WIN!' : 'GAME OVER',
+    onSaved: r => { G.lastRun = r; setLast(r); }, done: (sub, board) => { input.releaseAll(); input.anyPress(); if (board) openLB(G.mode); } });
+}
+function drawLB() {
+  drawBG(ctx, 'jungle', G.t * 14, G.t);
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 0, W, H);
+  panel(26, 6, 268, 144);
+  drawText(ctx, 'GLOBAL TOP 10', W / 2, 20, '#ffe03a', 12, 'center');
+  const lb = G.lb, me = (getName() || '').toLowerCase(), last = G.lastRun;
+  drawText(ctx, '#', 36, 31, '#8a8ac0', 6); drawText(ctx, 'NAME', 52, 31, '#8a8ac0', 6); drawText(ctx, 'STG', 200, 31, '#8a8ac0', 6, 'right'); drawText(ctx, 'SCORE', 284, 31, '#8a8ac0', 6, 'right');
+  if (lb.status === 'error') drawText(ctx, 'COULD NOT LOAD - OFFLINE?', W / 2, 78, '#ff8a8a', 8, 'center');
+  else if (!lb.rows.length) drawText(ctx, lb.status === 'loading' ? 'LOADING...' : 'NO SCORES YET - BE FIRST!', W / 2, 78, '#fff', 8, 'center');
+  let inTop = false;
+  lb.rows.slice(0, 10).forEach((r, i) => {
+    const y = 40 + i * 10, mine = (last && last.id === r.id) || (me && r.name.toLowerCase() === me); if (mine) inTop = true;
+    if (mine) { ctx.fillStyle = 'rgba(255,224,58,.22)'; ctx.fillRect(32, y - 7, 256, 9); ctx.fillStyle = '#ffe03a'; ctx.fillRect(32, y - 7, 1, 9); }
+    const col = mine ? '#ffe03a' : i === 0 ? '#ffd24a' : i < 3 ? '#e8e8f8' : '#fff';
+    drawText(ctx, String(i + 1), 36, y, col, 7); drawText(ctx, r.name.toUpperCase(), 52, y, col, 7);
+    drawText(ctx, r.won ? 'WIN' : String(r.stage), 200, y, r.won ? '#9af0b0' : '#9ab8ff', 7, 'right'); drawText(ctx, String(r.score), 284, y, col, 7, 'right');
+  });
+  if (last && last.rank && !(inTop && lb.rows.some(r => r.id === last.id))) drawText(ctx, 'YOUR LAST RUN: ' + last.score + ' (RANK #' + last.rank + ')', W / 2, 145, '#ffe03a', 7, 'center');
+  else if (lb.status === 'loading' && lb.rows.length) drawText(ctx, 'UPDATING...', W / 2, 145, '#8a8ac0', 6, 'center');
+  drawMenu(G.menu);
+}
+
 // ---------- stage setup ----------
 function startStage(i, keepPlayer = true) {
   input.releaseTouch();
-  const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0;
+  const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0; G.stageT = 0;
   G.props = st.props.map(p => ({ x: p.x, y: G.lane.top + 4 + ((p.x * 7) % Math.max(8, G.lane.bot - G.lane.top - 10)), kind: p.kind, hp: 2, flash: 0 }));
   if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
   checkpoint(); audio.play('stage' + i, st.music); setMode('stageintro');
@@ -293,7 +343,7 @@ function updatePlaying(dt) {
   for (const r of G.rubble || []) r.t += dt; G.rubble = (G.rubble || []).filter(r => r.t < 1.6);
   // wave clear
   if (G.lock !== null && !G.ents.some(e => e.state !== 'dead')) {
-    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; if (G.p.state === 'walk') G.p.state = 'idle'; setMode('stageclear'); if (G.stage + 1 < STAGES.length) checkpoint(); else clearSave(); return; }
+    if (G.boss && G.bossSpawned) { G.boss = null; G.lock = null; audio.stop(); audio.sfx('fanfare'); G.clearT = 0; G.clearBonus = 500 + Math.max(0, Math.round((120 - G.stageT) / 2)) * 10; G.score += G.clearBonus; if (G.p.state === 'walk') G.p.state = 'idle'; setMode('stageclear'); if (G.stage + 1 < STAGES.length) checkpoint(); else clearSave(); return; }
     G.lock = null; G.goT = 3; audio.sfx('go');
   }
   if (G.goT > 0) G.goT -= dt; if (G.lastHitT > 0) G.lastHitT -= dt;
@@ -375,8 +425,7 @@ function drawTitle() {
   shadow(ctx, 250, 160, 36); drawHuman(ctx, { type: 'keeper_stun', x: 250, y: 160, face: -1, t: G.t, state: 'walk' });
   shadow(ctx, 288, 172, 36); drawHuman(ctx, { type: 'cop_baton', x: 288, y: 172, face: -1, t: G.t + 1, state: 'walk' });
   if (G.menu && G.menu.kind === 'confirm') drawPause(); else if (G.menu) drawMenu(G.menu);
-  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, 162, '#9ab8ff', 8, 'center');
-  drawText(ctx, 'BY KUNGFUDOOM', W / 2, 173, '#c8d0e0', 7, 'center');
+  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0') + '   BY KUNGFUDOOM', W / 2, 175, '#c8d0e0', 7, 'center');
 }
 function stageIntro() {
   const st = STAGES[G.stage]; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -407,11 +456,12 @@ function step(dt) {
       if (!G.paused) { if (input.take('start')) openPause(); } else menuStep();
       if (G.paused) return;
       if (G.hitstop > 0) { G.hitstop -= dt; return; }
-      updatePlaying(dt); break;
+      updatePlaying(dt); G.stageT += dt; break;
     case 'stageclear': G.clearT = (G.clearT || 0) + dt; if (G.clearT > 3.2 && (input.take('start') || input.take('atk') || G.clearT > 6)) { startCutscene(G.stage); } break;
     case 'cutscene': if (stepCutscene(G.cs, dt, input)) afterCutscene(); break;
-    case 'outro': if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); toTitle(); } break;
-    case 'gameover': if (G.mt > 1 && (input.take('start') || input.take('atk'))) { saveHi(); G.score = 0; G.p = newPlayer(); startStage(G.stage, true); } break;
+    case 'outro': if (G.mt > 5.5 && !G.prompted) askScore(true); else if (promptOpen()) input.anyPress(); else if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); toTitle(); } break;
+    case 'lb': menuStep(); break;
+    case 'gameover': if (G.mt > 1 && !G.prompted) askScore(false); else if (promptOpen()) input.anyPress(); else if (G.mt > 1 && (input.take('start') || input.take('atk'))) { saveHi(); G.score = 0; G.p = newPlayer(); startStage(G.stage, true); } break;
   }
   if (G.mode !== 'play') input.pressed.mute = false;
 }
@@ -426,10 +476,11 @@ function render() {
     case 'stageintro': stageIntro(); break;
     case 'play': case 'stageclear': case 'gameover': drawWorld();
       if (G.paused) drawPause();
-      if (G.mode === 'stageclear') centerBox([['STAGE CLEAR!', '#ffe03a', 14], [STAGES[G.stage].name + ' cleared', '#fff', 8], ['SCORE ' + Math.round(G.score), '#8af', 8], ...(G.clearT > 3.2 ? [['ENTER / ATK to continue', '#fff', 7]] : [])], 60);
+      if (G.mode === 'stageclear') centerBox([['STAGE CLEAR!', '#ffe03a', 14], [STAGES[G.stage].name + ' cleared', '#fff', 8], ['BONUS +' + G.clearBonus + '  (' + Math.round(G.stageT) + 's)', '#9af0b0', 7], ['SCORE ' + Math.round(G.score), '#8af', 8], ...(G.clearT > 3.2 ? [['ENTER / ATK to continue', '#fff', 7]] : [])], 56);
       if (G.mode === 'gameover') centerBox([['GAME OVER', '#ff3a3a', 16], ['SCORE ' + Math.round(G.score), '#fff', 8], ...(G.mt > 1 ? [['ENTER to retry stage ' + (G.stage + 1), '#ffe03a', 8]] : [])], 70);
       break;
     case 'cutscene': drawCutscene(ctx, G.cs); break;
+    case 'lb': drawLB(); break;
     case 'outro': drawOutro(ctx, G.mt, Math.round(G.score)); break;
   }
 }
