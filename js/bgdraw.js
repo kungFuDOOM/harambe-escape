@@ -101,7 +101,9 @@ const SP = {
     const sc = Math.max(0.55, Math.min(1, (tw + 12) / (f[2] / S))); // board only as wide as its lettering needs
     const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f, sc }); const cx = r.x + (f[0] + f[2] / 2) / S * sc, cy = r.y + (f[1] + f[3] / 2) / S * sc; text(t, cx, cy + 3, fg); return true; },
   hsign(x, gy, t, bg, fg) { const s0 = A.sp.hsign; if (!s0) return false; const f = faceOf(s0), top = gy - 50 - f[1] / S; // board top sits at gate height (gy-50)
-    const r = spr('hsign', x, gy, { top, tint: bg, face: f }); text(t, r.x + (f[0] + f[2] / 2) / S, r.y + (f[1] + f[3] / 2) / S + 3, fg); return true; },
+    const r = spr('hsign', x, gy, { top, face: f }); const cx = r.x + (f[0] + f[2] / 2) / S, cy = r.y + (f[1] + f[3] / 2) / S; // dark lettering on the parchment board (light text on cream was unreadable)
+    g.save(); g.font = '700 8px Georgia, "Times New Roman", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = '1px';
+    g.fillStyle = 'rgba(255,244,214,0.6)'; g.fillText(t, cx + 0.5, cy + 0.9); g.fillStyle = '#3a2410'; g.fillText(t, cx + 0.75, cy + 0.2); g.restore(); return true; },
   bush(x, gy, w, c) { const dark = hx(c).reduce((a, b) => a + b, 0) < 150; return !!spr('bush_' + 'abc'[pick(x, 3)], x, gy, { tint: dark ? '#7d8fa0' : null, dy: 2 }); },
   tree(x, gy) { return !!spr('tree', x, gy, { dy: 2 }); },
   stand(x, gy, c1, c2, t) { const r = spr(c1 === '#e0a020' ? 'stand_a' : 'stand_b', x + 20, gy, { dy: 1 }); if (!r) return false; const cx = r.x + r.w / 2; box(cx - t.length * 3 - 3, r.y - 11, t.length * 6 + 6, 10, '#3a2a1a'); text(t, cx, r.y - 3, '#ffe9a0'); return true; },

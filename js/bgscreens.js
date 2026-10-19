@@ -23,11 +23,11 @@ export const SCREENS = {
   zoo: {
     tiles: [0, 1, 2, 3, 0, 1, 2, 3, 0],
     screens: [
-      { name: 'Entrance Plaza', plate: 'zoo-plaza', top: ID, bot: ID, lm: [['hsign', 120, 'WELCOME', '#2a6a3a', '#ffe9a0'], ['bush', 30, 26, '#1e4a28'], ['bush', 270, 30, '#235a2c']], lights: [] },
+      { name: 'Entrance Plaza', plate: 'zoo-plaza', top: ID, bot: ID, lm: [['hsign', 120, 'WELCOME', '#2a6a3a', '#ffe9a0']], lights: [] },
       { name: 'Food Court', plate: 'zoo-foodcourt', top: rgb(255, 232, 208), bot: rgb(255, 238, 218), warm: [255, 150, 40, 0.06], lm: [['bench', 250]], lights: [[60, 62, 26, [255, 190, 90], 1], [170, 62, 26, [255, 190, 90], 1]] },
       { name: 'Lion House', plate: 'zoo-lion', top: rgb(228, 196, 232), bot: rgb(238, 224, 236), lm: [['bench', 236]], lights: [], },
-      { name: 'Primate World', plate: 'zoo-primate', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [['bush', 30, 22, '#1a4a30'], ['bush', 285, 24, '#1a4a30']], lights: [] },
-      { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['bush', 26, 26, '#142e24'], ['bush', 296, 24, '#142e24']], lights: [] },
+      { name: 'Primate World', plate: 'zoo-primate', top: rgb(190, 184, 232), bot: rgb(214, 214, 240), stars: 0.35, lm: [], lights: [] },
+      { name: 'Night Path', plate: 'zoo-reptile', lift: 0.08, top: rgb(120, 128, 196), bot: rgb(158, 168, 214), stars: 0.9, fog: 0.22, lm: [['lamp', 36, '#ffd890']], lights: [] },
       { name: 'Zoo Exit', plate: 'zoo-exit', lift: 0.09, top: rgb(112, 124, 190), bot: rgb(176, 186, 224), stars: 1, fog: 0.12, warm: [255, 40, 60, 0.04], lm: [['ptext', 160, 45, 'ZOO EXIT', 'plaque'], ['cone', 150], ['cone', 168]], lights: [[48, 48, 22, [255, 205, 130], 1], [271, 48, 22, [255, 205, 130], 1]], siren: 1 },
     ],
   },
