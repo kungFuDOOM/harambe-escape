@@ -1,11 +1,11 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{margin:0;height:100%;background:#000;color:#ddd;font-family:"Courier New",monospace;overflow:hidden;overscroll-behavior:none}
+html,body{margin:0;height:100%;background:#000;color:#ddd;font-family:"Courier New",monospace;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
 body{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
 #wrap{position:relative;width:min(100vw,calc(100dvh*16/9));aspect-ratio:16/9;max-height:100dvh}
-canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;touch-action:none}
 #help{position:fixed;left:0;right:0;bottom:2px;margin:0;font-size:11px;color:#778;text-align:center;pointer-events:none}
 /* touch controls: Gauntlet-style flat round buttons in an arc, floating stick */
-#touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none;--u:clamp(42px,13dvh,58px);
+#touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none;touch-action:none;--u:clamp(42px,13dvh,58px);
   --r:max(14px,env(safe-area-inset-right));--bt:max(12px,env(safe-area-inset-bottom));--l:max(14px,env(safe-area-inset-left));--tp:max(10px,env(safe-area-inset-top))}
 #zone{position:absolute;left:0;top:0;bottom:0;width:50%;pointer-events:auto}
 #stick{position:absolute;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;border:2px solid rgba(255,230,170,.35);background:rgba(0,0,0,.18);display:none;pointer-events:none}

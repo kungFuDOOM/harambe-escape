@@ -7,7 +7,7 @@ const core = createCore(), down = core.down, pressed = core.pressed;
 const MAP = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down',
   j: 'atk', J: 'atk', z: 'atk', Z: 'atk', k: 'heavy', K: 'heavy', x: 'heavy', X: 'heavy', ' ': 'jump', c: 'jump', C: 'jump', l: 'special', L: 'special', v: 'special', V: 'special',
   Tab: 'skip', Enter: 'start', p: 'start', P: 'start', m: 'mute', M: 'mute', Escape: 'start' };
-const typing = e => e.target && e.target.tagName === 'INPUT';
+const typing = e => { const t = e.target && e.target.tagName; return t === 'INPUT' || t === 'TEXTAREA'; };
 addEventListener('keydown', e => { if (typing(e)) return; const k = MAP[e.key]; if (k) { core.set('kb:' + e.key, k, true); e.preventDefault(); } });
 addEventListener('keyup', e => { if (typing(e)) return; const k = MAP[e.key]; if (k) core.set('kb:' + e.key, k, false); });
 
@@ -49,8 +49,17 @@ function watchdog() {
 function onTouch(e) { touchCount = e.touches ? e.touches.length : 0; lastTouchT = performance.now(); if (touchCount === 0) { if (stickType === 'touch') releaseStick(); btnHold.forEach((h, id) => { if (h.type === 'touch') dropBtn(id); }); } }
 ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(t => addEventListener(t, onTouch, { capture: true, passive: true }));
 // stop iOS pinch / gesture zoom, double-tap zoom, and long-press selection
-['gesturestart', 'gesturechange', 'gestureend'].forEach(t => addEventListener(t, e => e.preventDefault(), { passive: false }));
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => addEventListener(t, e => { if (!typing(e)) e.preventDefault(); }, { passive: false }));
 addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+addEventListener('dblclick', e => { if (!typing(e)) e.preventDefault(); }, { passive: false });
+// Android Chrome/Brave still double-tap-zooms despite maximum-scale=1; kill rapid second taps.
+let lastTapEnd = 0;
+addEventListener('touchend', e => {
+  if (typing(e)) return;
+  const now = performance.now();
+  if (now - lastTapEnd < 300) e.preventDefault();
+  lastTapEnd = now;
+}, { passive: false });
 addEventListener('selectstart', e => { if (!typing(e)) e.preventDefault(); });
 addEventListener('dragstart', e => e.preventDefault());
 // any pointer ending anywhere (even outside the element/window) releases whatever it held
