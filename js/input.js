@@ -7,8 +7,9 @@ const core = createCore(), down = core.down, pressed = core.pressed;
 const MAP = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down',
   j: 'atk', J: 'atk', z: 'atk', Z: 'atk', k: 'heavy', K: 'heavy', x: 'heavy', X: 'heavy', ' ': 'jump', c: 'jump', C: 'jump', l: 'special', L: 'special', v: 'special', V: 'special',
   Tab: 'skip', Enter: 'start', p: 'start', P: 'start', m: 'mute', M: 'mute', Escape: 'start' };
-addEventListener('keydown', e => { const k = MAP[e.key]; if (k) { core.set('kb:' + e.key, k, true); e.preventDefault(); } });
-addEventListener('keyup', e => { const k = MAP[e.key]; if (k) core.set('kb:' + e.key, k, false); });
+const typing = e => e.target && e.target.tagName === 'INPUT';
+addEventListener('keydown', e => { if (typing(e)) return; const k = MAP[e.key]; if (k) { core.set('kb:' + e.key, k, true); e.preventDefault(); } });
+addEventListener('keyup', e => { if (typing(e)) return; const k = MAP[e.key]; if (k) core.set('kb:' + e.key, k, false); });
 
 // gamepad (optional): A=attack/select, B=jump, X=heavy, Y=special, Start=pause, d-pad/left stick=move/navigate
 const GP = { 0: 'atk', 1: 'jump', 2: 'heavy', 3: 'special', 9: 'start', 8: 'start', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
@@ -50,7 +51,7 @@ function onTouch(e) { touchCount = e.touches ? e.touches.length : 0; lastTouchT 
 // stop iOS pinch / gesture zoom, double-tap zoom, and long-press selection
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => addEventListener(t, e => e.preventDefault(), { passive: false }));
 addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
-addEventListener('selectstart', e => e.preventDefault());
+addEventListener('selectstart', e => { if (!typing(e)) e.preventDefault(); });
 addEventListener('dragstart', e => e.preventDefault());
 // any pointer ending anywhere (even outside the element/window) releases whatever it held
 function endPointer(e) { if (e.pointerId === stickId) releaseStick(); const h = btnHold.get(e.pointerId); if (h) dropBtn(e.pointerId); }

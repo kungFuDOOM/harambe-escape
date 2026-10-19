@@ -30,3 +30,20 @@ body.cutscene .b.small{display:none}
 body.menu #zone{pointer-events:none}
 body.menu #btns{opacity:0}body.menu #btns .b{pointer-events:none}
 body.menu:not(.paused) .small.pause{display:none}
+/* leaderboard name-entry overlay */
+#lbPrompt{position:fixed;left:0;right:0;top:max(6px,env(safe-area-inset-top));z-index:30;display:flex;justify-content:center;pointer-events:auto;font-family:"Courier New",monospace}
+#lbPrompt[hidden]{display:none}
+#lbPrompt *{touch-action:manipulation;user-select:text;-webkit-user-select:text}
+.lbbox{width:min(440px,94vw);padding:8px 10px 7px;border:2px solid #ff9ad8;border-radius:3px;background:linear-gradient(#2c2a78,#1a1850 50%,#0c0a2a);box-shadow:0 0 0 2px #05040f,0 6px 18px rgba(0,0,0,.6);text-align:center;color:#fff}
+.lbt{font:bold 15px "Trebuchet MS",sans-serif;color:#ffe03a;letter-spacing:1px;text-shadow:0 2px 0 #000}
+.lbs{font-size:12px;color:#8af;margin:2px 0 5px}
+.lbrow{display:flex;gap:6px}
+#lbPrompt input{flex:1;min-width:0;font:bold 16px "Courier New",monospace;text-transform:uppercase;letter-spacing:2px;padding:6px 8px;color:#fff;background:#05040f;border:2px solid #5a3a9a;border-radius:3px;outline:none;text-align:center}
+#lbPrompt input:focus{border-color:#ffe03a}
+#lbPrompt button{font:bold 13px "Trebuchet MS",sans-serif;color:#fff;padding:6px 10px;border-radius:3px;border:2px solid #ff9ad8;background:#5a3a9a;cursor:pointer;white-space:nowrap}
+#lbPrompt .lbgo{background:#c8321e;border-color:#ffd0a0}
+#lbPrompt button:disabled{opacity:.5}
+.lbm{min-height:14px;margin-top:5px;font-size:11px;color:#c8d0e0}.lbm.bad{color:#ff8a8a}.lbm.ok{color:#9af0b0}
+#lbPrompt .lbw{margin-top:5px}
+#lbPrompt .lbwal{font-size:12px;letter-spacing:0;text-transform:none;padding:5px 8px}
+.lbn{margin-top:4px;font-size:9px;line-height:1.25;color:#9a9ac8}
