@@ -3,13 +3,22 @@ import { A } from './assets.js';
 
 const S = 3; // device px per logic px: atlas frames are baked at 3x
 const q3 = v => Math.round(v * S) / S; // snap to device pixels so sprites never shimmer
-/** Draw one atlas frame anchored at its feet (ax, ay). `face` < 0 mirrors it. */
-function blitFrame(ctx, sheetName, anim, i, x, y, face, flash) {
+/** Draw one atlas frame anchored at its feet (ax, ay). `face` < 0 mirrors it.
+ * `bob` (device px, + = down) moves only the upper body (everything above the hips) so the feet stay planted on the floor
+ * while the torso dips on a footfall and rises on the passing pose. Pixel-exact: no sub-pixel scaling, no seam. */
+function blitFrame(ctx, sheetName, anim, i, x, y, face, flash, bob = 0) {
   const m = A.atlas[sheetName]; if (!m) return;
-  const a = m.anims[anim] || m.anims.idle, f = m.frames[a[Math.max(0, Math.min(a.length - 1, i | 0))]];
+  const a = m.anims[anim] || m.anims.idle, f = anim === null ? m.frames[i] : m.frames[a[Math.max(0, Math.min(a.length - 1, i | 0))]]; // anim null = raw frame index
   const img = flash ? A.flash[sheetName] : A.sheets[sheetName];
   ctx.save(); ctx.translate(q3(x), q3(y)); if (face < 0) ctx.scale(-1, 1);
-  ctx.drawImage(img, f.x, f.y, f.w, f.h, -f.ax / S, -f.ay / S, f.w / S, f.h / S); ctx.restore();
+  const b = Math.round(bob);
+  if (!b) ctx.drawImage(img, f.x, f.y, f.w, f.h, -f.ax / S, -f.ay / S, f.w / S, f.h / S);
+  else { // split at the hips (58% down the frame): legs stay put, upper body shifts by b device px
+    const seam = Math.round(f.h * 0.58), up = b < 0 ? -b : 0; // rising: legs part starts `up` rows higher so the gap is filled with hip pixels
+    const ly = seam - up; ctx.drawImage(img, f.x, f.y + ly, f.w, f.h - ly, -f.ax / S, (ly - f.ay) / S, f.w / S, (f.h - ly) / S);
+    ctx.drawImage(img, f.x, f.y, f.w, seam, -f.ax / S, (b - f.ay) / S, f.w / S, seam / S);
+  }
+  ctx.restore();
 }
 /** AI-generated prop (props_ai atlas, baked at 3x), anchored bottom-centre. `s` = extra scale, `face` < 0 mirrors. */
 function aiProp(ctx, name, x, y, s = 1, face = 1, white = false) {
@@ -37,13 +46,24 @@ function sprWhite(ctx, name, x, y) {
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
 export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
+/** Body bob for one step, phase 0..1 with the footfall at 0: the torso is lowest just after the foot lands (squash) and
+ * highest on the passing pose. Returns device px (+ = down). `amp` = peak offset, `k` = 0..1 blend (eases in from idle). */
+export function stepBob(ph, amp, k = 1) {
+  ph = ((ph % 1) + 1) % 1;
+  const base = Math.cos(ph * Math.PI * 2) * amp; // +amp at contact, -amp at passing
+  const land = ph < 0.12 ? (1 - ph / 0.12) * amp * 0.6 : 0; // extra dip right on the footfall
+  return (base + land) * k;
+}
+/** Harambe's walk phase (0..12, contacts on 0 and 6) from ground distance travelled. */
+export const harambePhase = wd => ((wd / WALK_PX) % 12 + 12) % 12;
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0, bob = 0;
   switch (state) {
     case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
-      anim = 'walk'; i = ((s.wd != null ? s.wd / WALK_PX : t * 82 / WALK_PX) % 12 + 12) % 12; break; }
+      anim = 'walk'; i = harambePhase(s.wd != null ? s.wd : t * 82);
+      bob = stepBob((i % 6) / 6, 3, s.ramp ?? 1); break; } // heavy gorilla: 3 device px dip on each footfall, eased in with the start-of-walk ramp
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
@@ -51,27 +71,52 @@ export function drawHarambe(ctx, s) {
     case 'hurt': anim = 'hurt'; i = 0; break;
     case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.5 ? 2 : 1); break;
     case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
-    default: anim = 'idle'; i = (t * 3) % 4;
+    default:
+      if (s.stopT > 0 && s.stopFrom != null) { // walk -> idle: finish the step onto the next contact pose instead of snapping out mid-stride
+        const to = s.stopFrom < 6 ? 6 : 12, k = 1 - s.stopT / STOP_T; anim = 'walk'; i = (s.stopFrom + (to - s.stopFrom) * k) % 12; bob = stepBob((i % 6) / 6, 3, 1 - k); break; }
+      anim = 'idle'; i = (t * 3) % 4;
   }
-  blitFrame(ctx, 'harambe', anim, i, x, y - z + bob, face, flash);
+  blitFrame(ctx, 'harambe', anim, i, x, y - z, face, flash, bob);
+}
+export const STOP_T = 0.1; // seconds Harambe takes to settle from mid-stride onto a contact pose when you let go
+
+/** Enemy walk cycles built from the poses each sheet actually has, ordered from the standing (passing) pose to the widest
+ * stride (contact). Played as a ping-pong per step and driven by ground distance (`wd`), so the feet keep pace with the
+ * ground instead of a fixed 7 fps flip-book. `step` = logic px of ground covered per step. Frame 2 of keeper_dart/agent_kick/
+ * agent_net is a near-duplicate of frame 1 (and doubles as a windup pose), so it's left out. */
+export const ENEMY_WALK = {
+  keeper_net: { poses: [0, 1], step: 20 }, keeper_dart: { poses: [0, 1], step: 20 }, keeper_stun: { poses: [0, 1], step: 20 },
+  cop_baton: { poses: [0, 1, 2, 3], step: 20 }, cop_shield: { poses: [0, 1, 2, 3], step: 20 }, cop_taser: { poses: [0, 1, 2, 3], step: 20 },
+  agent_kick: { poses: [0, 1], step: 22 }, agent_net: { poses: [0, 1], step: 22 }, agent_case: { poses: [0, 1], step: 22 },
+  soldier_shield: { poses: [0, 1, 2, 3], step: 22 }, soldier_net: { poses: [0, 1, 2, 3], step: 22 }, soldier_baton: { poses: [0, 1, 2, 3], step: 22 },
+  boss_head: { poses: [0, 1, 2, 3], step: 26 }, boss_captain: { poses: [0, 1, 2, 3], step: 26 }, boss_agent: { poses: [0, 1, 2], step: 28 },
+  boss_general: { poses: [0, 1, 2, 3], step: 26 }, boss_baron: { poses: [0, 1, 2, 3], step: 28 },
+};
+/** Which atlas frame + body bob an enemy shows at ground distance `wd`. Phase 0 = footfall on the widest stride. */
+export function enemyWalkPose(type, wd) {
+  const w = ENEMY_WALK[type] || { poses: [0], step: 20 }, n = w.poses.length, ph = ((wd / w.step) % 1 + 1) % 1;
+  const tri = Math.abs(1 - 2 * ph); // 1 at the footfall (widest stride), 0 at the passing (standing) pose
+  return { frame: w.poses[Math.min(n - 1, Math.round(tri * (n - 1)))], ph };
 }
 
 /** Humans & bosses: s.type is the atlas character (e.g. 'cop_baton'). */
 export function drawHuman(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, type } = s;
   const m = A.atlas[type]; if (!m) return;
-  let anim = 'idle', i = 0;
+  let anim = 'idle', i = 0, bob = 0, frame = -1;
   switch (state) {
-    case 'walk': anim = 'walk'; i = (t * 7) % m.anims.walk.length; break;
-    case 'run': anim = 'walk'; i = (t * 13) % m.anims.walk.length; break;
+    case 'walk': case 'run': {
+      if (s.moving === false) { anim = 'idle'; break; } // standing still in the walk/chase state (already at its slot): no treading in place
+      const wd = s.wd != null ? s.wd : t * (state === 'run' ? 90 : 36), p = enemyWalkPose(type, wd);
+      frame = p.frame; bob = stepBob(p.ph, type.startsWith('boss') ? 3 : 2); break; }
     case 'windup': anim = 'windup'; i = (t * 8) % m.anims.windup.length; break;
     case 'atk': anim = 'atk'; i = Math.min(m.anims.atk.length - 1, Math.floor(at * m.anims.atk.length)); break;
     case 'hurt': anim = 'hurt'; i = 0; break;
     case 'down': case 'dead': anim = 'down'; i = z > 3 ? 0 : (s.lieT > 0.45 ? 2 : 1); break;
     default: anim = 'idle'; i = 0;
   }
-  const bob = (state === 'walk' || state === 'run') && m.anims.walk.length < 2 ? Math.abs(Math.sin(t * 9)) * 1.6 : 0; // single-frame walkers get a stomp bob
-  blitFrame(ctx, type, anim, i, x, y - z - bob, face, flash);
+  if (frame >= 0) { anim = null; i = frame; }
+  blitFrame(ctx, type, anim, i, x, y - z, face, flash, bob);
 }
 
 /** The kid (AI art). pose: kid_idle / kid_walk0 / kid_walk1 (idle with a hop) / kid_fly (tumbling) / kid_flop, kid_cheer (landed in the hay nest). Anchored at the feet. */

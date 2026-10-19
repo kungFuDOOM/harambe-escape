@@ -35,7 +35,7 @@ const scenes = [
     drawBG(ctx, 'zoo', 120, t); ctx.fillStyle = (Math.floor(t * 4) % 2) ? 'rgba(255,0,0,.12)' : 'rgba(0,0,255,.12)'; ctx.fillRect(0, 0, W, H);
     once('siren', 0.1, t, () => audio.sfx('siren'));
     shadow(ctx, 120, 150, 44); drawHarambe(ctx, { x: 120, y: 150, face: 1, t, state: t > 2.5 ? 'special' : 'idle', at: ((t - 2.5) * 0.5) % 0.6 });
-    for (let i = 0; i < 3; i++) { const ex = 330 - Math.min(t * 60, 130) - i * 26, ey = 148 + i * 6; shadow(ctx, ex, ey, 36); drawHuman(ctx, { type: ['keeper_net', 'keeper_stun', 'keeper_dart'][i % 3], x: ex, y: ey, face: -1, t: t + i, state: ex > 220 ? 'run' : 'walk' }); }
+    for (let i = 0; i < 3; i++) { const ex = 330 - Math.min(t * 60, 130) - i * 26, ey = 148 + i * 6; shadow(ctx, ex, ey, 36); drawHuman(ctx, { type: ['keeper_net', 'keeper_stun', 'keeper_dart'][i % 3], x: ex, y: ey, face: -1, t: t + i, wd: Math.min(t * 60, 130) + i * 7, state: t * 60 >= 130 ? 'idle' : ex > 220 ? 'run' : 'walk' }); }
     drawText(ctx, 'THE GORILLA IS LOOSE!!', 250, 70, '#ff5050', 8, 'center');
     if (t > 2.5) drawText(ctx, '"Time to go home."', 120, 90, '#fff', 8, 'center');
     panel(ctx, 'THE ZOO IS IN CHAOS. COPS, THE FBI AND THE ARMY\nARE COMING. HARAMBE CRACKS HIS KNUCKLES: JUNGLE, HO!'); } },

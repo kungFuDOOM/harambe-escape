@@ -18,7 +18,7 @@ function actor(ctx, a, k, t) {
   const go = c => {
     if (a.who === 'h') { shadow(c, x, a.y, 44); drawHarambe(c, { x, y: a.y, face: a.face, t, wd: a.walk ? d + t * 0 : undefined, state: a.walk && a.x0 !== a.x1 && k < 1 ? 'walk' : 'idle' }); }
     else if (a.who === 'kid') { shadow(c, x, a.y, 14); drawKid(c, x, a.y, 'kid_idle', a.face); }
-    else { shadow(c, x, a.y, a.who.startsWith('boss') ? 56 : 36); drawHuman(c, { type: a.who, x, y: a.y, face: a.face, t, state: a.x0 !== a.x1 && k < 1 ? 'walk' : 'idle' }); }
+    else { shadow(c, x, a.y, a.who.startsWith('boss') ? 56 : 36); drawHuman(c, { type: a.who, x, y: a.y, face: a.face, t, wd: d, state: a.x0 !== a.x1 && k < 1 ? 'walk' : 'idle' }); }
   };
   if (a.sil) silhouette(ctx, go); else go(ctx);
 }
