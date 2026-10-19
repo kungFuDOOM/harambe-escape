@@ -16,7 +16,7 @@ for (const st of STAGES) {
       assert.notEqual(signature(kind, i, stops), signature(kind, i - 1, stops), `screen ${i} == ${i - 1}`);
       const a = S.screens[i - 1], b = S.screens[i];
       assert.ok(a.name !== b.name);
-      assert.notDeepEqual(a.lm.map(l => l[0] + l[1]), b.lm.map(l => l[0] + l[1]));
+      if (!a.plate || a.plate === b.plate) assert.notDeepEqual(a.lm.map(l => l[0] + l[1]), b.lm.map(l => l[0] + l[1])); // different painted plates already differ; only plate re-use needs different landmarks
     }
   });
   test(`${kind}: at least 4 distinct looks, and no two neighbouring plate tiles are the same type`, () => {

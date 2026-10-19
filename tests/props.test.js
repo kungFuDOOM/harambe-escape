@@ -33,3 +33,4 @@ test('hazards and pickups are painted sprites in haz.json', () => {
   assert.ok(fs.statSync(new URL('haz.webp', dir)).size < 80 * 1024);
   const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.doesNotMatch(src, /'1UP'/); assert.doesNotMatch(src, /c\.arc\(0, 0, 14/);
 });
+test('no tiny decorative fire-hydrant overlay on Stage 2 screens (it read as out of scale)', () => { for (const s of SCREENS.street.screens) assert.ok(!s.lm.some(l => l[0] === 'hydrant'), s.name); });

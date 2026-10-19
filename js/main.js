@@ -4,7 +4,7 @@ import { input } from './input.js';
 import { audio } from './audio.js';
 import { drawBG, laneOf } from './bg.js';
 import { loadAssets, A } from './assets.js';
-import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
+import { shadow, harambeWalk, isPassing, STOP_T, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
@@ -212,6 +212,7 @@ function hurtPlayer(dmg, srcX, kd) {
 // ---------- player ----------
 function updatePlayer(dt) {
   const p = G.p, ax = input.axis(); p.t += dt; p.st += dt; p.inv = Math.max(0, p.inv - dt);
+  p.stopT = Math.max(0, (p.stopT || 0) - dt); if (p.state !== 'idle') p.stopT = 0; p.walkK = p.state === 'walk' ? Math.min(1, (p.walkK || 0) + dt / 0.18) : 0; // body bob eases in over the first step
   p.comboT -= dt; if (p.comboT <= 0 && p.state !== 'atk') p.n = 0; p.rage = Math.max(0, (p.rage || 0) - dt);
   const free = p.state === 'idle' || p.state === 'walk';
   if (free) {
@@ -219,7 +220,8 @@ function updatePlayer(dt) {
     p.ramp = (ax.x || ax.y) ? Math.min(1, (p.ramp ?? 0) + dt / 0.07) : 0; // 70 ms ease-in so a step starts with a push, not an instant 82 px/s
     const mx = ax.x * 82 * dn * (0.35 + 0.65 * p.ramp), my = ax.y * 52 * dn * (0.35 + 0.65 * p.ramp);
     const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
-    if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') p.wd = 0; // every walk starts on the contact pose, never mid-stride
+    if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') { p.wd = 0; p.stopT = 0; } // every walk starts on the contact pose, never mid-stride
+    if (p.state === 'idle' && was === 'walk') { const w = harambeWalk(p.wd || 0); if (isPassing(w.i)) { p.stopFrom = w.i; p.stopT = STOP_T; } } // let go mid-stride: settle onto the next contact pose
   }
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
   if (input.take('atk')) {
@@ -272,6 +274,12 @@ function shoot(e, dy = 0) {
   G.proj.push({ kind, x: e.x + e.face * 26, y: clamp(e.y + dy, G.lane.top, G.lane.bot), z: e.boss ? 26 : 22, vx: e.face * sp, dmg: kind === 'shell' ? e.dmg + 4 : e.dmg, life: 3 });
   audio.sfx(kind === 'net' ? 'net' : kind === 'shell' ? 'heavy' : 'swing');
 }
+/** Ground distance an enemy really covered this tick drives its walk cycle; `moving` goes false (idle pose) once it has
+ * been parked at its slot for a moment, so it doesn't tread in place. A short grace keeps 1-tick stops from flickering. */
+function stepWalk(e, x0, y0, dt) {
+  const d = Math.hypot(e.x - x0, e.y - y0); e.wd = (e.wd || 0) + d;
+  e.stillT = d > 0.05 ? 0 : (e.stillT || 0) + dt; e.moving = e.stillT < 0.12;
+}
 function updateEnemy(e, dt) {
   const p = G.p; e.t += dt; e.st += dt; e.hurtT = Math.max(0, e.hurtT - dt); e.inv = Math.max(0, e.inv - dt); e.cd -= dt; if (e.flashT) e.flashT -= dt;
   const dx = p.x - e.x, dy = p.y - e.y, dist = Math.abs(dx), d = e.d;
@@ -285,8 +293,9 @@ function updateEnemy(e, dt) {
       if (e.boss) tx = p.x - Math.sign(dx || 1) * 36;
       if (kind !== 'ranged' && (tx < G.cam + (e.boss ? 46 : 30) || tx > G.cam + W - (e.boss ? 46 : 30))) tx = p.x + (p.x - tx); // never queue up off-screen: switch to the hero's other side
       const mx = tx - e.x, my = ty - e.y;
+      const ex0 = e.x, ey0 = e.y;
       if (Math.abs(mx) > 3) e.x += Math.sign(mx) * sp * dt; if (Math.abs(my) > 3) e.y += Math.sign(my) * sp * 0.8 * dt;
-      e.y = clamp(e.y, G.lane.top, G.lane.bot); e.face = dx >= 0 ? 1 : -1;
+      e.y = clamp(e.y, G.lane.top, G.lane.bot); stepWalk(e, ex0, ey0, dt); e.face = dx >= 0 ? 1 : -1;
       if (e.cd <= 0 && alive) {
         const go = mv => { e.state = 'windup'; e.st = 0; e.move = mv; audio.sfx('alert'); };
         if (e.boss) bossPick(e, dx, dy);
@@ -317,7 +326,7 @@ function updateEnemy(e, dt) {
       else if (m === 'slam') { if (e.st > 0.12 && !e.hit) { e.hit = true; G.shake = 6; audio.sfx('heavy'); G.fx.push({ x: e.x, y: e.y, t: 0, ring: true }); if (radiusTest(e, p, 68, 28) && p.z < 14) hurtPlayer(e.dmg + 2, e.x, true); } if (e.st > 0.6) { e.state = 'walk'; e.cd = cdn(1, 0.6); } }
       else if (m === 'summon') { if (e.st > 0.2 && !e.hit) { e.hit = true; const sm = d.summons, pick = () => Array.isArray(sm) ? sm[(Math.random() * sm.length) | 0] : sm; spawn(pick(), 'L'); spawn(pick(), 'R'); audio.sfx('alert'); popText('BACKUP!', e.x, e.y - 90, '#ff5050', 0.9); } if (e.st > 0.7) { e.state = 'walk'; e.cd = cdn(3, 1); } }
       break; }
-    case 'charge': e.x += e.vx * dt; if (!e.hit && hitTest(e, { reach: 8, w: 34 }, p) && p.state !== 'dead') { e.hit = true; hurtPlayer(e.dmg, e.x, true); } e.y += Math.sign(dy) * 20 * dt;
+    case 'charge': e.x += e.vx * dt; e.wd = (e.wd || 0) + Math.abs(e.vx * dt); e.moving = true; if (!e.hit && hitTest(e, { reach: 8, w: 34 }, p) && p.state !== 'dead') { e.hit = true; hurtPlayer(e.dmg, e.x, true); } e.y += Math.sign(dy) * 20 * dt;
       if (e.st > 0.8 || e.x < G.cam - 10 || e.x > G.cam + W + 10) { e.state = 'walk'; e.vx = 0; e.cd = 1.4 * e.cdm; e.x = clamp(e.x, G.cam + 10, G.cam + W - 10); } break;
     case 'hurt': e.x += e.vx * dt; e.vx *= 0.9; if (e.st > 0.28) { e.state = 'walk'; e.cd = Math.max(e.cd, 0.4); } break;
     case 'down': e.x += e.vx * dt; e.vz -= 520 * dt; e.z += e.vz * dt; if (e.z <= 0) { e.z = 0; e.vx *= 0.8; if (!e.landed) { e.landed = true; G.fx.push({ x: e.x, y: e.y, t: 0, dust: true }); } } if (e.st > 0.9 && e.z === 0) { e.state = 'walk'; e.inv = 0.6; e.cd = 0.8 * e.cdm; e.landed = false; } break;
@@ -472,9 +481,9 @@ function drawWorld() {
   for (const r of G.rubble || []) list.push({ y: r.y - 1, f: () => drawRubble(ctx, { ...r, x: r.x - cam }) });
   for (const it of G.items) list.push({ y: it.y, f: () => drawItem(ctx, it, it.x - cam, G.t) });
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); if (e.tag) drawEliteRing(ctx, e, e.x - cam, G.t); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
-    drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
+    drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, wd: e.wd || 0, moving: e.moving !== false, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
   const p = G.p; list.push({ y: p.y, f: () => { shadow(ctx, p.x - cam, p.y, 44); if (p.inv > 0 && Math.floor(G.t * 20) % 2 && p.state !== 'special') return; if (p.rage > 0) { ctx.strokeStyle = `rgba(255,80,40,${0.5 + 0.4 * Math.sin(G.t * 14)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y, 26, 8, 0, 0, 7); ctx.stroke(); }
-    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
+    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, ramp: p.walkK, stopT: p.stopT, stopFrom: p.stopFrom, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const n of G.proj) { if (n.lob) shadow(ctx, n.x - cam, n.y, 10); drawProj(ctx, { ...n, x: n.x - cam }, G.t); }
   for (const f of G.fx) { const k = f.t / 0.3, x = f.x - cam; if (f.ring) { ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, f.y, 10 + k * 56, 4 + k * 18, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = `rgba(255,200,60,${1 - k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, f.y, 6 + k * 50, 2 + k * 15, 0, 0, 7); ctx.stroke(); } else if (f.dust) drawDust(ctx, x, f.y, k); else drawSpark(ctx, x, f.y - 32, k, f.big); }

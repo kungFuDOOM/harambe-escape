@@ -34,10 +34,10 @@ export const SCREENS = {
   street: {
     tiles: [0, 1, 2, 3, 0, 1, 2, 3, 0, 1],
     screens: [
-      { name: 'Back Alley', plate: 'city-alley', top: ID, bot: ID, rain: 0.5, lm: [['dumpster', 40], ['hydrant', 210], ['pipe', 270]], lights: [] },
+      { name: 'Back Alley', plate: 'city-alley', top: ID, bot: ID, rain: 0.5, lm: [['dumpster', 40], ['pipe', 270]], lights: [] },
       { name: 'Vine Plaza', plate: 'city-plaza', top: rgb(205, 222, 255), bot: rgb(225, 235, 255), rain: 0.4, lm: [['lamp', 40, '#9fd0ff'], ['planter', 130], ['bench', 200], ['lamp', 300, '#9fd0ff']], lights: [[40, 70, 34, [140, 200, 255], 1], [300, 70, 34, [140, 200, 255], 1]] },
-      { name: 'Storefront Row', plate: 'city-stores', top: rgb(255, 214, 250), bot: rgb(255, 232, 250), rain: 0.3, lm: [['hydrant', 24]], lights: [] },
-      { name: 'Diner Corner', plate: 'city-diner', top: rgb(255, 224, 190), bot: rgb(255, 236, 214), warm: [255, 150, 40, 0.06], rain: 0.2, lm: [['hydrant', 300]], lights: [[80, 84, 40, [255, 200, 110], 1]] },
+      { name: 'Storefront Row', plate: 'city-stores', top: rgb(255, 214, 250), bot: rgb(255, 232, 250), rain: 0.3, lm: [], lights: [] },
+      { name: 'Diner Corner', plate: 'city-diner', top: rgb(255, 224, 190), bot: rgb(255, 236, 214), warm: [255, 150, 40, 0.06], rain: 0.2, lm: [], lights: [[80, 84, 40, [255, 200, 110], 1]] },
       { name: 'Bridge Approach', plate: 'city-bridge', top: rgb(180, 204, 240), bot: rgb(206, 224, 244), fog: 0.28, rain: 0.35, lm: [['barrier', 250], ['cone', 200]], lights: [] },
       { name: 'Under the Bridge', plate: 'city-underbridge', lift: 0.09, top: rgb(140, 158, 206), bot: rgb(186, 200, 226), fog: 0.38, rain: 0.2, lm: [['girders', 0], ['dumpster', 220], ['cone', 120]], lights: [[160, 40, 46, [120, 170, 255], 1]] },
       { name: 'Precinct Barricade', plate: 'city-barricade', top: rgb(210, 190, 220), bot: rgb(226, 214, 232), rain: 0.25, lm: [['cone', 200]], lights: [], siren: 1 },

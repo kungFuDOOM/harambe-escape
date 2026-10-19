@@ -34,10 +34,15 @@ test('typewriter and advance: first tap completes text, second advances, skip en
   s = csAdvance({ ...s, t: 9 }, 'adv', 3, 80); s = csAdvance({ ...s, t: 9 }, 'adv', 3, 80); assert.ok(s.done);
   assert.ok(csAdvance({ panel: 0, t: 0, done: false }, 'skip', 3, 80).done);
 });
-test('walk cycle: 12-frame two-step cycle, one shared body pivot and ground line, loops seamlessly', () => {
+test('walk cycle: 6 distinct frames from one painted set (contact, down, passing per leg), one pivot and ground line', () => {
   const a = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url))).harambe;
-  assert.equal(a.anims.walk.length, 12);
-  assert.equal(new Set(a.anims.walk).size, 12);
+  assert.equal(a.anims.walk.length, 6);
+  assert.equal(new Set(a.anims.walk).size, 6, 'distinct walk frames');
+  assert.ok(Math.min(...a.anims.walk) >= 36, 'no frames from the old 2024 walk strip mixed in');
+  // stance-foot timing: increasing thresholds inside one two-step cycle, each step about half of it
+  assert.equal(a.walkAt.length, 6); for (let k = 1; k < 6; k++) assert.ok(a.walkAt[k] > a.walkAt[k - 1]);
+  assert.ok(a.walkAt[5] < 2 * a.walkStep && a.walkStep > 15 && a.walkStep < 40, 'step ' + a.walkStep);
+  assert.ok(Math.abs(a.walkAt[2] + a.walkStep - a.walkAt[5]) < 0.1, 'both legs take the same time');
   const f = a.anims.walk.map(i => a.frames[i]);
   // feet baseline: the sprite is anchored on the ground line, so each frame's anchor row must lie inside the frame and the cycle never changes scale
   for (const x of f) assert.ok(x.ay > 150 && x.ay <= x.h + 4, 'ay ' + x.ay + ' h ' + x.h);
