@@ -53,7 +53,7 @@ function endCard(ctx, t) {
   if (t > 0.9) {
     panel(ctx, 84, 108, 152, 36);
     drawText(ctx, 'PLAY FREE IN YOUR BROWSER', W / 2, 121, '#ffe03a', 8, 'center');
-    drawText(ctx, 'harambe-escape.vercel.app', W / 2, 136, '#fff', 8, 'center');
+    drawText(ctx, 'playharambe.fun', W / 2, 136, '#fff', 8, 'center');
   }
   if (t > 1.3) drawText(ctx, 'KEYBOARD - GAMEPAD - TOUCH', W / 2, 158, '#c8d0e0', 7, 'center');
   if (t > 1.3) drawText(ctx, 'BY KUNGFUDOOM', W / 2, 172, '#9ab8ff', 7, 'center');
@@ -177,10 +177,10 @@ function attract(ctx, t) { // closing attract screen
   shadow(ctx, 272, 166, 36); drawHuman(ctx, { type: 'cop_baton', x: 272, y: 166, face: -1, t, state: 'walk' });
   shadow(ctx, 298, 176, 36); drawHuman(ctx, { type: 'agent_kick', x: 298, y: 176, face: -1, t: t + 1, state: 'walk' });
   if (t > 0.7) { drawText(ctx, '1 PLAYER - 5 STAGES - 5 BOSSES', W / 2, 96, '#9af0b0', 8, 'center');
-    panel(ctx, 92, 104, 136, 34); drawText(ctx, 'PLAY FREE IN YOUR BROWSER', W / 2, 117, '#ffe03a', 7, 'center'); drawText(ctx, 'harambe-escape.vercel.app', W / 2, 131, '#fff', 8, 'center'); }
-  if (t > 1.4 && blink(t, 1.5)) drawText(ctx, 'PUSH START', W / 2, 156, '#fff', 12, 'center');
+    panel(ctx, 72, 101, 176, 42); drawText(ctx, 'PLAY FREE IN YOUR BROWSER', W / 2, 112, '#ffe03a', 7, 'center'); drawText(ctx, 'PLAYHARAMBE.FUN', W / 2, 134, '#fff', 12, 'center'); }
+  if (t > 1.4 && blink(t, 1.5)) drawText(ctx, 'PUSH START', W / 2, 162, '#fff', 12, 'center');
   drawText(ctx, '(C) 2026 KUNGFUDOOM', W / 2, 174, '#9ab8ff', 7, 'center');
-  if (t > 1.4 && !blink(t, 1.5)) drawText(ctx, 'INSERT COIN', W / 2, 156, '#ffe03a', 12, 'center');
+  if (t > 1.4 && !blink(t, 1.5)) drawText(ctx, 'INSERT COIN', W / 2, 162, '#ffe03a', 12, 'center');
   drawText(ctx, 'CREDIT 0', W - 6, 174, '#fff', 7, 'right');
 }
 
