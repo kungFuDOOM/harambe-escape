@@ -95,8 +95,6 @@ const faceOf = s => s.r.length >= 8 ? [s.r[4], s.r[5], s.r[6], s.r[7]] : null;
 const pick = (x, n) => Math.abs(Math.round(x * 7 + n)) % n;
 const SPRL = ['', 'a', 'b', 'c'];
 const SP = {
-  bus(x, gy) { return !!spr('bus', x, gy, { dy: 4 }); }, // painted open-air zoo tram (assets/props/haz.webp)
-  lights(x, gy, w) { const s = A.sp.lights; return !!(s && spr('lights', x, gy, { mode: 'left', top: 46, sw: w * S / s.r[2] })); }, // painted string lights, stretched to the span
   sign(x, gy, t, bg, fg) { const tw = t.length * 6, nm = tw <= 26 ? 'sign_s' : tw <= 48 ? 'sign_m' : 'sign_l', s0 = A.sp[nm]; if (!s0) return false; const f = faceOf(s0);
     const sc = Math.max(0.55, Math.min(1, (tw + 12) / (f[2] / S))); // board only as wide as its lettering needs
     const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f, sc }); const cx = r.x + (f[0] + f[2] / 2) / S * sc, cy = r.y + (f[1] + f[3] / 2) / S * sc; text(t, cx, cy + 3, fg); return true; },

@@ -1,4 +1,4 @@
-"""Key + trim + despill the painted hazard / pickup / zoo prop sources (src_hazards/*.jpg, solid magenta bg) into
+"""Key + trim + despill the painted hazard / pickup sources (src_hazards/*.jpg, solid magenta bg) into
 assets/props/haz.webp + haz.json (3x game scale like the other painted props). Sizes are game px; js/hazdraw.js + js/bgdraw.js draw them at w/3 x h/3."""
 import os, json, numpy as np
 from PIL import Image
@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, '..'
 ITEMS = {
     'boulder': ('boulder', ('w', 34), False), 'coconut': ('coconut', ('w', 18), False), 'cabinet': ('cabinet', ('h', 40), False),
     'searchlight': ('searchlight', ('h', 50), False), 'gem': ('gem', ('h', 18), False), 'rage': ('rage', ('h', 22), True),
-    'oneup': ('oneup', ('h', 20), False), 'bus': ('bus', ('w', 112), False), 'lights': ('lights', ('w', 160), True),
+    'oneup': ('oneup', ('h', 20), False),
 }
 def build(src, size, full):
     a = load(os.path.join(HERE, 'src_hazards', src + '.jpg'))
