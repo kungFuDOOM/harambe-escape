@@ -41,6 +41,9 @@ export async function encode({ raw, out, segs, total, music, extra, musicVol = 0
   writeFileSync(wavPath, await renderAudio({ dur: total + 0.5, sfx, music, extra, musicVol, sfxVol }));
 
   const files = [...new Set(segs.flatMap(s => s.ov ? [s.clip, s.ov] : [s.clip]))], idx = Object.fromEntries(files.map((f, i) => [f, i]));
+  const frames = Object.fromEntries(files.map(f => [f, +spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v', '-show_entries', 'stream=nb_frames', '-of', 'csv=p=0', src(raw, f)]).stdout.toString()]));
+  for (const s of segs) for (const [f, a] of s.ov ? [[s.clip, s.start], [s.ov, 0]] : [[s.clip, s.start]]) // a short source would silently shift every later cut off the soundtrack
+    if (Math.round(a * FPS) + Math.round(s.dur * FPS) > frames[f]) { console.error(`${f} has ${frames[f]} frames, cut needs ${Math.round(a * FPS) + Math.round(s.dur * FPS)}: re-capture it longer`); process.exit(1); }
   const vparts = segs.map((s, i) => { const a = Math.round(s.start * FPS), n = Math.round(s.dur * FPS);
     const base = `[${idx[s.clip]}:v]trim=start_frame=${a}:end_frame=${a + n},setpts=PTS-STARTPTS,format=yuv444p`;
     return s.ov ? `${base}[b${i}];[${idx[s.ov]}:v]trim=start_frame=0:end_frame=${n},setpts=PTS-STARTPTS,format=rgba[o${i}];[b${i}][o${i}]overlay=format=auto,format=yuv444p[v${i}]`

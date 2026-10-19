@@ -101,7 +101,7 @@ export async function record(page, out, frames, { each = '() => {}', draw = null
   for (let i = 0; i < frames; i++) {
     const b64 = await page.evaluate(([i, each, draw, bot]) => {
       const f = (0, eval)('(' + each + ')'); f(i);
-      if (draw) (0, eval)('(' + draw + ')')(i);
+      if (draw) { const n0 = window.__sfxlog.length; (0, eval)('(' + draw + ')')(i); for (let k = n0; k < window.__sfxlog.length; k++) window.__sfxlog[k][0] = window.__vt() + (i + 1) * 1000 / 30; } // drawn frames don't move the clock: stamp their sfx by frame
       else { if (bot) window.__bot(); window.__advance(1000 / 30); }
       return document.getElementById('c').toDataURL('image/png').slice(22);
     }, [i, each, draw, bot]);

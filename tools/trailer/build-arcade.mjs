@@ -1,4 +1,4 @@
-// The arcade attract-mode trailer (~45 s): cabinet self-test, breaking news, logo slam, player select, five SCENE splashes
+// The arcade attract-mode trailer (~50 s): cabinet self-test, the haystack save, breaking news, logo slam, player select, five SCENE splashes
 // over gameplay with comic bursts, rapid-fire boss VS cards, the Baron going down, INSERT COIN. Cuts on a 150 bpm grid.
 // Narrated by a monster-truck radio announcer (voice.mjs; needs Piper + a voice, e.g. en_US-joe-medium).
 // usage: PIPER=piper PIPER_VOICE=en_US-joe-medium.onnx node tools/trailer/build-arcade.mjs <rawdir> <out.mp4>
@@ -12,8 +12,9 @@ const HIT = [[0.12, 'heavy']];
 
 const { segs, total, at } = layout([
   ['card_boot', 0, BAR, [[0.2, 'select'], [0.36, 'select'], [0.52, 'select'], [0.68, 'select'], [0.84, 'alert']]],
+  ['intro', 8.0, 2 * BAR], // the haystack toss: he saves the boy
   ['card_news', 0, 2 * BAR, [[0.05, 'siren'], [1.0, 'siren']]],
-  ['card_slam', 0, BAR, [[0.15, 'heavy'], [0.3, 'swing']]],
+  ['card_slam', 0, 2 * BAR, [[0.15, 'heavy'], [0.3, 'swing']]],
   ['card_hero', 0, 2 * BAR, [[1.2, 'select'], [1.7, 'special']]],
   ['s0_waves', 23.4, 2 * BAR, [[0, 'go']], 'card_o_zoo'],
   ['s1_waves', 11.0, 2 * BAR, [[0, 'go']], 'card_o_street'],
@@ -28,9 +29,9 @@ const { segs, total, at } = layout([
   ['card_attract', 0, 4.5 * BAR, [[0.12, 'heavy'], [0.3, 'fanfare'], [1.0, 'special']]],
 ]);
 
-const news = at('card_news'), slam = at('card_slam'), hero = at('card_hero'), vs = at('card_vs_head'), baron = at('card_vs_baron'), end = at('card_attract');
+const toss = at('intro'), news = at('card_news'), slam = at('card_slam'), hero = at('card_hero'), vs = at('card_vs_head'), baron = at('card_vs_baron'), end = at('card_attract');
 const music = [
-  { t0: news, t1: slam, root: 52, tempo: 150, mode: 'minor', seed: 63, vol: 0.7, parts: { mel: false, snare: false } }, // tension under the news
+  { t0: toss, t1: slam, root: 52, tempo: 150, mode: 'minor', seed: 63, vol: 0.7, parts: { mel: false, snare: false } }, // tension under the story beats
   { t0: hero, t1: vs, root: 52, tempo: 150, mode: 'minor', seed: 63, vol: 1, parts: { drive: true, arp: true } },
   { t0: vs, t1: baron + BAR, root: 50, tempo: 150, mode: 'phrygian', seed: 61, vol: 1, parts: { drive: true, arp: true } },
   { t0: baron + BAR, t1: end, root: 52, tempo: 150, mode: 'dorian', seed: 63, vol: 1, parts: { drive: true, arp: true } },
@@ -43,7 +44,9 @@ const extra = [
 const zoo = at('s0_waves'), ko = at('s4_bossko'), hype = ko + BAR;
 const VO = narrate([ // echo: true gets the stadium repeats
   { t: 0.15, text: 'Saturday! Saturday! Saturday!', echo: true },
-  { t: slam + 0.15, text: 'Harambe! Jungle! Brawl!', echo: true },
+  { t: toss + 1.9, text: 'He saves the boy.', style: 'drama' },
+  { t: news + 0.8, text: 'But they still want to kill...', style: 'drama' },
+  { t: slam + 0.25, text: 'Harambe... escape... escape...', style: 'drama', echo: true },
   { t: hero + 1.1, text: 'Four hundred pounds of fury!' },
   { t: zoo + 0.3, text: 'Smash the zoo!' },
   { t: zoo + 2 * BAR + 0.3, text: 'Bust up the cops!' },

@@ -12,7 +12,7 @@ const ACT1 = [
   ['intro', 5.4, 2.4], // "Harambe has a better idea"
   ['intro', 8.0, 3.8], // the toss, the flop, "AGAIN!"
   ['card_loose', 0, 2.4],
-  ['intro', 12.45, 4.55], // sirens, keepers charge, "Time to go home."
+  ['intro', 12.45, 4.5], // sirens, keepers charge, "Time to go home."
 ];
 const ACT2 = [
   ['card_everyone', 0, BAR, [[0, 'heavy']]],
