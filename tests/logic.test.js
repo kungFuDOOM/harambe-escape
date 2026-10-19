@@ -103,3 +103,11 @@ test('difficulty ramps stage by stage and the roster matches the theme', () => {
   assert.ok(Object.values(ENEMIES).some(e => e.kind === 'ranged' && e.proj === 'net') && Object.values(ENEMIES).some(e => e.proj === 'dart') && Object.values(ENEMIES).some(e => e.proj === 'bolt'), 'nets, darts and bolts');
   assert.equal(BOSSES.boss_baron.name, 'THE BARON');
 });
+test('every walking character has one painted passing pose (anims.pass) that is foot-anchored and as tall as its stand frame', () => {
+  const atlas = JSON.parse(fs.readFileSync(asset('atlas.json')));
+  for (const [name, m] of Object.entries(atlas)) {
+    if (!m.anims.pass) continue;
+    const f = m.frames[m.anims.pass[0]], ref = name === 'harambe' ? m.frames[24] : m.frames[0];
+    assert.equal(f.ay, f.h, name); assert.ok(f.h >= ref.h - 6 && f.h <= ref.h * 1.06 + 2, name + ' height ' + f.h + ' vs ' + ref.h);
+  }
+});

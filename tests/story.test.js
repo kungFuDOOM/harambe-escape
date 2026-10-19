@@ -37,7 +37,8 @@ test('typewriter and advance: first tap completes text, second advances, skip en
 test('walk cycle: 12-frame two-step cycle, one shared body pivot and ground line, loops seamlessly', () => {
   const a = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url))).harambe;
   assert.equal(a.anims.walk.length, 12);
-  assert.equal(new Set(a.anims.walk).size, 12);
+  assert.ok(new Set(a.anims.walk).size >= 9, 'distinct walk frames'); // the painted passing pose is held for 2 of the 12 phases on each leg
+  assert.ok(a.anims.pass && a.anims.walk.filter(i => i === a.anims.pass[0]).length === 4, 'painted passing pose used once per step (2 phases each)');
   const f = a.anims.walk.map(i => a.frames[i]);
   // feet baseline: the sprite is anchored on the ground line, so each frame's anchor row must lie inside the frame and the cycle never changes scale
   for (const x of f) assert.ok(x.ay > 150 && x.ay <= x.h + 4, 'ay ' + x.ay + ' h ' + x.h);

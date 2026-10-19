@@ -80,8 +80,8 @@ export function drawHarambe(ctx, s) {
 }
 export const STOP_T = 0.1; // seconds Harambe takes to settle from mid-stride onto a contact pose when you let go
 
-/** Enemy walk cycles built from the poses each sheet actually has, ordered from the standing (passing) pose to the widest
- * stride (contact). Played as a ping-pong per step and driven by ground distance (`wd`), so the feet keep pace with the
+/** Enemy walk cycles built from the poses each sheet actually has, ordered from the standing pose to the widest
+ * stride (contact; the last entry is the stride used with the painted passing pose). Played as a ping-pong per step and driven by ground distance (`wd`), so the feet keep pace with the
  * ground instead of a fixed 7 fps flip-book. `step` = logic px of ground covered per step. Frame 2 of keeper_dart/agent_kick/
  * agent_net is a near-duplicate of frame 1 (and doubles as a windup pose), so it's left out. */
 export const ENEMY_WALK = {
@@ -92,9 +92,14 @@ export const ENEMY_WALK = {
   boss_head: { poses: [0, 1, 2, 3], step: 26 }, boss_captain: { poses: [0, 1, 2, 3], step: 26 }, boss_agent: { poses: [0, 1, 2], step: 28 },
   boss_general: { poses: [0, 1, 2, 3], step: 26 }, boss_baron: { poses: [0, 1, 2, 3], step: 28 },
 };
-/** Which atlas frame + body bob an enemy shows at ground distance `wd`. Phase 0 = footfall on the widest stride. */
-export function enemyWalkPose(type, wd) {
+/** Which atlas frame + body bob an enemy shows at ground distance `wd`. Phase 0 = footfall.
+ * With a painted passing pose (anims.pass, tools/ai-art/build_walk_pass.py) the cycle is stride, passing, stride, passing:
+ * the widest stride covers the footfall half of each step and the passing pose (foot lifted, legs apart) the other half.
+ * Without one it falls back to a ping-pong from the standing pose to the widest stride. */
+export function enemyWalkPose(type, wd, anims) {
   const w = ENEMY_WALK[type] || { poses: [0], step: 20 }, n = w.poses.length, ph = ((wd / w.step) % 1 + 1) % 1;
+  const pass = anims && anims.pass && anims.pass[0];
+  if (pass != null) return { frame: ph >= 0.25 && ph < 0.75 ? pass : w.poses[n - 1], ph };
   const tri = Math.abs(1 - 2 * ph); // 1 at the footfall (widest stride), 0 at the passing (standing) pose
   return { frame: w.poses[Math.min(n - 1, Math.round(tri * (n - 1)))], ph };
 }
@@ -107,7 +112,7 @@ export function drawHuman(ctx, s) {
   switch (state) {
     case 'walk': case 'run': {
       if (s.moving === false) { anim = 'idle'; break; } // standing still in the walk/chase state (already at its slot): no treading in place
-      const wd = s.wd != null ? s.wd : t * (state === 'run' ? 90 : 36), p = enemyWalkPose(type, wd);
+      const wd = s.wd != null ? s.wd : t * (state === 'run' ? 90 : 36), p = enemyWalkPose(type, wd, m.anims);
       frame = p.frame; bob = stepBob(p.ph, type.startsWith('boss') ? 3 : 2); break; }
     case 'windup': anim = 'windup'; i = (t * 8) % m.anims.windup.length; break;
     case 'atk': anim = 'atk'; i = Math.min(m.anims.atk.length - 1, Math.floor(at * m.anims.atk.length)); break;
