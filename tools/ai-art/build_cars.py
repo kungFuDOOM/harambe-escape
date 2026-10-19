@@ -6,7 +6,7 @@ from scipy import ndimage as ndi
 from keyer import load, key, to_rgba
 from build_stageprops import finish
 HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, '..', '..', 'assets', 'props')
-CARS = {'car_a': 60, 'car_b': 68, 'car_c': 66}  # width in game px (hitbox stays +-28 around the centre)
+CARS = {'car_a': 126, 'car_b': 142, 'car_c': 138}  # width in game px (~2.8x Harambe's width; hitbox +-58 around the centre)
 sprites = {}
 for name, w in CARS.items():
     a = load(os.path.join(HERE, 'src_cars', name + '.jpg'))

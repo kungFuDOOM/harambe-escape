@@ -2,6 +2,7 @@
 import { drawProp, drawBanana, drawHeart, drawText, shadow } from './sprites.js';
 import { W } from './logic.js';
 import { A } from './assets.js';
+import { CAR_DEPTH } from './hazlogic.js';
 
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 const pulse = t => 0.55 + 0.45 * Math.abs(Math.sin(t * 9));
@@ -13,7 +14,7 @@ export function drawHazMarkers(c, haz, cam, t, lane) {
       c.fillStyle = `rgba(255,50,40,${0.25 + 0.4 * pulse(t) * k})`; c.beginPath(); c.ellipse(x, h.y, 10 + 8 * k, 3 + 3 * k, 0, 0, 7); c.fill();
       c.strokeStyle = `rgba(255,220,200,${0.5 * pulse(t)})`; c.lineWidth = 1; c.beginPath(); c.ellipse(x, h.y, 10 + 8 * k, 3 + 3 * k, 0, 0, 7); c.stroke(); }
     else if ((h.k === 'car' || h.k === 'roll') && h.t < (h.k === 'car' ? 1.1 : 0.9)) { // lane warning: faint red strip + flashing arrows on the side it enters from
-      c.fillStyle = `rgba(255,40,40,${0.10 + 0.10 * pulse(t)})`; c.fillRect(0, h.y - 9, W, 18);
+      c.fillStyle = `rgba(255,40,40,${0.10 + 0.10 * pulse(t)})`; const d = h.k === 'car' ? CAR_DEPTH : 9; c.fillRect(0, h.y - d, W, d * 2);
       const ex = h.dir > 0 ? 14 : W - 14; if (Math.floor(t * 8) % 2) { drawText(c, h.dir > 0 ? '\u25b6\u25b6' : '\u25b6\u25b6', ex, h.y + 3, '#ff5040', 8, 'center'); } }
     else if (h.k === 'spot') { const x = h.x - cam, hot = h.flash > 0;
       const g = c.createRadialGradient(x, h.y, 2, x, h.y, 26); g.addColorStop(0, hot ? 'rgba(255,90,70,.75)' : 'rgba(255,250,200,.7)'); g.addColorStop(1, 'rgba(255,250,200,0)');
@@ -38,7 +39,7 @@ export function hazardEntries(c, haz, cam, t) {
   for (const h of haz) {
     if (h.k === 'drop') { if (h.t < 0.95) continue; out.push({ y: h.y, f: () => { const x = h.x - cam, z = h.z || 0; shadow(c, x, h.y, 18);
       if (h.obj === 'cabinet') cabinet(c, x, h.y - z); else if (h.obj === 'coconut') coconut(c, x, h.y - z); else drawProp(c, { kind: 'crate', x, y: h.y - z }); } }); }
-    else if (h.k === 'car' && h.t > 1.1) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 60); car(c, h.x - cam, h.y, h.dir, h.v | 0); } });
+    else if (h.k === 'car' && h.t > 1.1) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 120); car(c, h.x - cam, h.y, h.dir, h.v | 0); } });
     else if (h.k === 'roll' && h.t > 0.9) out.push({ y: h.y, f: () => { shadow(c, h.x - cam, h.y, 30); boulder(c, h.x - cam, h.y, h.t); } });
   }
   return out;
