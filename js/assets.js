@@ -21,6 +21,6 @@ export async function loadAssets() {
     if (m.fg) jobs.push(img(`assets/bg/${k}_fg.webp`).then(i => A.bg[k].fg = i));
   }
   // painted stage props (tools/ai-art/build_stageprops.py): per-group atlas + rects. Optional: a missing atlas falls back to the code drawing.
-  for (const gname of ['common', 'zoo', 'street', 'office', 'base', 'jungle', 'cars']) jobs.push(Promise.all([fetch(`assets/props/${gname}.json`).then(r => r.json()), img(`assets/props/${gname}.webp`)]).then(([m, im]) => { for (const k of Object.keys(m)) A.sp[k] = { im, r: m[k] }; }).catch(() => {}));
+  for (const gname of ['common', 'zoo', 'street', 'office', 'base', 'jungle', 'cars', 'haz']) jobs.push(Promise.all([fetch(`assets/props/${gname}.json`).then(r => r.json()), img(`assets/props/${gname}.webp`)]).then(([m, im]) => { for (const k of Object.keys(m)) A.sp[k] = { im, r: m[k] }; }).catch(() => {}));
   await Promise.all(jobs); A.ready = true;
 }

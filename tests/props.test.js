@@ -27,3 +27,8 @@ test('Stage 2 car hazards are painted sprites (3 variants), not code shapes', ()
   assert.ok(fs.statSync(new URL('cars.webp', dir)).size < 60 * 1024);
   const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.match(src, /A\.sp\[CARS/); assert.doesNotMatch(src, /hatchback/);
 });
+test('hazards, pickups, zoo tram and string lights are painted sprites in haz.json', () => {
+  const m = JSON.parse(fs.readFileSync(new URL('haz.json', dir))); for (const k of ['boulder', 'coconut', 'cabinet', 'searchlight', 'gem', 'rage', 'oneup', 'bus', 'lights']) { assert.ok(m[k], k); assert.ok(m[k][0] + m[k][2] <= 1024, k); }
+  assert.ok(fs.statSync(new URL('haz.webp', dir)).size < 80 * 1024);
+  const src = fs.readFileSync(new URL('../js/hazdraw.js', import.meta.url), 'utf8'); assert.doesNotMatch(src, /'1UP'/); assert.doesNotMatch(src, /c\.arc\(0, 0, 14/);
+});
