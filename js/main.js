@@ -103,9 +103,10 @@ function openLB(from) {
   G.menu = mkLbMenu(); G.mode = 'lb'; G.mt = 0; refreshLB();
 }
 function mkLbMenu() {
-  const m = { kind: 'lb', sel: 1, items: [{ label: 'REFRESH', act: () => refreshLB(), r: { x: 62, y: 154, w: 90, h: 16 } }, { label: 'BACK', act: closeLB, r: { x: 168, y: 154, w: 90, h: 16 } }], back: () => { closeLB(); return null; } };
+  const m = { kind: 'lb', sel: 2, items: [{ label: 'REFRESH', act: () => refreshLB(), r: { x: 30, y: 154, w: 78, h: 16 } }, { label: 'WALLET', act: askWallet, r: { x: 121, y: 154, w: 78, h: 16 } }, { label: 'BACK', act: closeLB, r: { x: 212, y: 154, w: 78, h: 16 } }], back: () => { closeLB(); return null; } };
   return m;
 }
+function askWallet() { openPrompt({ walletOnly: true, title: 'SOL WALLET', done: () => { input.releaseAll(); input.anyPress(); } }); }
 function closeLB() {
   const prev = G.lbPrev || 'title'; input.releaseTouch();
   if (prev === 'title') { G.menu = titleMenu(); setMode('title'); } else { G.menu = null; G.mode = prev; G.mt = G.lbMt || 0; }
@@ -460,7 +461,7 @@ function step(dt) {
     case 'stageclear': G.clearT = (G.clearT || 0) + dt; if (G.clearT > 3.2 && (input.take('start') || input.take('atk') || G.clearT > 6)) { startCutscene(G.stage); } break;
     case 'cutscene': if (stepCutscene(G.cs, dt, input)) afterCutscene(); break;
     case 'outro': if (G.mt > 5.5 && !G.prompted) askScore(true); else if (promptOpen()) input.anyPress(); else if (G.mt > 4 && (input.take('start') || input.take('atk'))) { saveHi(); toTitle(); } break;
-    case 'lb': menuStep(); break;
+    case 'lb': if (promptOpen()) input.anyPress(); else menuStep(); break;
     case 'gameover': if (G.mt > 1 && !G.prompted) askScore(false); else if (promptOpen()) input.anyPress(); else if (G.mt > 1 && (input.take('start') || input.take('atk'))) { saveHi(); G.score = 0; G.p = newPlayer(); startStage(G.stage, true); } break;
   }
   if (G.mode !== 'play') input.pressed.mute = false;

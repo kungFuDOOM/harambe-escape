@@ -50,3 +50,5 @@ By kungFuDOOM.
 
 ## Global leaderboard
 Finish a run (Game Over or the ending) and you can post a name (3-12 chars) + score to a global top 10; open it any time from **LEADERBOARD** on the title menu. Backend is a Supabase table (`harambe_scores`, SQL in `supabase/`) reached only through two RPCs (`submit_score`, `top_scores`) with the public key in `js/lbconfig.js`. If the network is down the game just says so and carries on. Scores are client-reported, so they can be faked; the server validates ranges, rate-limits per browser and rows can be hidden. QA: `python3 tools/qa-leaderboard.py`.
+
+Optional SOL wallet: players may add one (name prompt, or WALLET on the Leaderboard). It is stored privately (`harambe_wallets`, no client read access) and never shown. Export with `tools/export-wallets.py` (service key from env/file, never committed).

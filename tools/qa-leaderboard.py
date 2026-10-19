@@ -27,7 +27,7 @@ async def main():
             await pg.wait_for_function("window.__game.mode=='lb' && window.__game.lb.status=='ok'",timeout=10000); await pg.wait_for_timeout(300)
             assert await G("G.lb.rows.length")>=6; await shot('3_leaderboard_data')
             # back
-            await pg.evaluate("window.__game.menu.items[1].act()"); assert await G("G.mode")=='title'
+            await pg.evaluate("window.__game.menu.items[2].act()"); assert await G("G.mode")=='title'
             # start a run, die with a score -> prompt
             await pg.evaluate("window.__game.menu.items[%d].act()"%(await G("G.menu.items.findIndex(i=>i.label.startsWith('NEW'))")))
             await pg.wait_for_function('window.__game.mode=="play"',timeout=9000)
@@ -35,21 +35,28 @@ async def main():
             await pg.evaluate("(()=>{const G=window.__game;G.score=27500;G.stage=2;G.p.lives=1;G.p.hp=0;G.p.state='dead';G.p.st=1.5})()")
             await pg.wait_for_function('window.__game.mode=="gameover"',timeout=5000)
             await pg.wait_for_selector('#lbPrompt:not([hidden])',timeout=6000); await pg.wait_for_timeout(300)
-            await pg.fill('#lbPrompt input',''); await pg.type('#lbPrompt input','wasd jkl'); assert (await pg.input_value('#lbPrompt input')).upper()=='WASD JKL','typing blocked'
-            await pg.fill('#lbPrompt input','fuck'); await pg.click('#lbPrompt .lbgo'); assert 'DIFFERENT' in await pg.inner_text('.lbm')
-            await pg.fill('#lbPrompt input','ab'); await pg.click('#lbPrompt .lbgo'); assert '3-12' in await pg.inner_text('.lbm')
-            await pg.fill('#lbPrompt input',nm); await shot('2_name_prompt')
-            await pg.click('#lbPrompt .lbgo'); await pg.wait_for_function("document.querySelector('.lbm').textContent.startsWith('SAVED')",timeout=8000); await shot('2b_saved')
+            await pg.fill('#lbPrompt .lbname',''); await pg.type('#lbPrompt .lbname','wasd jkl'); assert (await pg.input_value('#lbPrompt .lbname')).upper()=='WASD JKL','typing blocked'
+            await pg.fill('#lbPrompt .lbname','fuck'); await pg.click('#lbPrompt .lbgo'); assert 'DIFFERENT' in await pg.inner_text('.lbm')
+            await pg.fill('#lbPrompt .lbname','ab'); await pg.click('#lbPrompt .lbgo'); assert '3-12' in await pg.inner_text('.lbm')
+            await pg.fill('#lbPrompt .lbname',nm); await pg.fill('#lbPrompt .lbwal','abc0OIl-bad'); await pg.click('#lbPrompt .lbgo'); assert 'VALID SOL' in await pg.inner_text('.lbm'); await shot('2c_wallet_invalid')
+            await pg.fill('#lbPrompt .lbwal','FakeQaTestWaaet'+'1'*20); await shot('2_name_prompt')
+            await pg.click('#lbPrompt .lbgo'); await pg.wait_for_function("document.querySelector('.lbm').textContent.startsWith('SAVED')",timeout=8000); assert 'WALLET SAVED' in await pg.inner_text('.lbm'); await shot('2b_saved')
             assert (await G("G.lastRun.rank"))>=1; print(tag,'rank',await G("G.lastRun.rank"))
             await pg.click('#lbPrompt .lbgo')  # LEADERBOARD
             await pg.wait_for_function("window.__game.mode=='lb' && window.__game.lb.status=='ok'",timeout=10000); await pg.wait_for_timeout(300)
             assert nm.lower() in [x['name'].lower() for x in await G("G.lb.rows")], 'submitted score not listed'
             await shot('4_leaderboard_mine')
-            await pg.evaluate("window.__game.menu.items[1].act()"); assert await G("G.mode")=='gameover'
+            wi=await G("G.menu.items.findIndex(i=>i.label=='WALLET')"); assert wi>=0
+            r=await pg.evaluate("(()=>{const G=window.__game,it=G.menu.items[%d].r,c=document.getElementById('c').getBoundingClientRect();return [c.left+(it.x+it.w/2)/320*c.width,c.top+(it.y+it.h/2)/180*c.height,it.h/180*c.height]})()"%wi)
+            if touch: assert r[2]>=34,r; await pg.touchscreen.tap(r[0],r[1])
+            else: await pg.mouse.click(r[0],r[1])
+            await pg.wait_for_selector('#lbPrompt:not([hidden])'); assert (await pg.input_value('#lbPrompt .lbwal')).startswith('FakeQa'); await shot('6_wallet_dialog')
+            await pg.click('#lbPrompt .lbsk'); await pg.wait_for_timeout(200); assert await G("G.mode")=='lb'
+            await pg.evaluate("window.__game.menu.items[2].act()"); assert await G("G.mode")=='gameover'
             # offline: block network and try again on a fresh game over
             await ctx.set_offline(True)
             await pg.evaluate("(()=>{const G=window.__game;G.prompted=false;G.mt=2})()"); await pg.wait_for_selector('#lbPrompt:not([hidden])')
-            await pg.fill('#lbPrompt input','QA_OFFLINE'); await pg.click('#lbPrompt .lbgo'); await pg.wait_for_function("document.querySelector('.lbm').textContent.includes('OFFLINE')",timeout=9000); await shot('5_offline')
+            await pg.fill('#lbPrompt .lbname','QA_OFFLINE'); await pg.click('#lbPrompt .lbgo'); await pg.wait_for_function("document.querySelector('.lbm').textContent.includes('OFFLINE')",timeout=9000); await shot('5_offline')
             await pg.click('#lbPrompt .lbsk'); await ctx.set_offline(False)
             assert await G("G.mode")=='gameover'
             # game still continues: enter retries stage
