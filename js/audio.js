@@ -1,6 +1,5 @@
-// Chiptune audio, all synthesized with WebAudio (no files).
-const MODES = { minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10] };
-const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+// Audio, all synthesized with WebAudio (no files): SFX here, music in js/music.js.
+import { TRACKS, bossOf, voices, playStep, playCue, playJingle } from './music.js';
 
 class Audio8 {
   constructor() { this.ctx = null; this.muted = false; this.track = null; this.timer = null; this.step = 0; this.next = 0; }
@@ -8,11 +7,16 @@ class Audio8 {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     this.ctx = new AC();
-    this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.5; this.master.connect(this.ctx.destination);
-    this.music = this.ctx.createGain(); this.music.gain.value = 0.35; this.music.connect(this.master);
+    this.comp = this.ctx.createDynamicsCompressor(); this.comp.threshold.value = -14; this.comp.knee.value = 12; this.comp.ratio.value = 4; this.comp.attack.value = 0.004; this.comp.release.value = 0.2; this.comp.connect(this.ctx.destination);
+    this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.5; this.master.connect(this.comp);
+    this.music = this.ctx.createGain(); this.music.gain.value = 0.26; this.music.connect(this.master); // music sits ~6dB under the SFX bus so hits and pickups always cut through
     this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = 0.8; this.sfxBus.connect(this.master);
+    // iOS/Safari: the context starts (or falls back to) suspended/interrupted; resume it on every gesture until it runs, and play a silent buffer once to unlock output
+    const unlock = () => { const c = this.ctx; if (!c) return; if (c.state !== 'running') { const r = c.resume(); if (r && r.catch) r.catch(() => {}); } if (!this.unlocked) { this.unlocked = true; try { const b = c.createBuffer(1, 1, 22050), src = c.createBufferSource(); src.buffer = b; src.connect(c.destination); src.start(0); } catch (_) {} } };
+    unlock(); ['pointerdown', 'touchend', 'keydown'].forEach(e => addEventListener(e, unlock, { capture: true, passive: true })); this.ctx.onstatechange = () => { if (this.ctx.state === 'interrupted') unlock(); };
     const len = this.ctx.sampleRate * 0.5; this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    if (this.pending) { const [n, cf] = this.pending; this.pending = null; this.play(n, cf); } // music asked for before the first tap starts as soon as audio is unlocked
   }
   toggleMute() { this.muted = !this.muted; if (this.master) this.master.gain.value = this.muted ? 0 : 0.5; return this.muted; }
   tone(type, f, t, dur, vol, bus, slide) {
@@ -51,33 +55,29 @@ class Audio8 {
       case 'fanfare': [523, 523, 523, 659, 784, 1047].forEach((f, i) => this.tone('square', f, t + i * 0.13, 0.2, 0.25, b)); break;
     }
   }
-  play(stage, cfg) { // cfg {root,tempo,mode} ; stage 'title' uses default
-    this.stop(); if (!this.ctx) { this.pending = [stage, cfg]; return; }
-    this.cfg = cfg || { root: 55, tempo: 120, mode: 'minor' }; this.step = 0; this.next = this.ctx.currentTime + 0.1;
-    this.seed = (stage === 'title' ? 7 : 11 + (cfg ? cfg.root : 0)); this.melody = this.makeMelody();
-    this.timer = setInterval(() => this.schedule(), 50);
+  // ---- music (js/music.js): original percussion-led tropical grooves, per theme. `name`: 'title' | 'stage0..4' | 'boss0..4' | 'cs0..4' (mellow cutscene bed) | 's' (resume the last one)
+  play(name, cfg) {
+    if (name === 's') { if (!this.last) return; [name, cfg] = this.last; }
+    this.stop(); this.last = [name, cfg]; if (!this.ctx) { this.pending = [name, cfg]; return; }
+    const c = this.ctx; this.pending = null;
+    let tr = TRACKS[name], cue = null;
+    if (!tr && /^boss\d$/.test(name)) tr = bossOf(TRACKS['stage' + name[4]]);
+    if (!tr && /^cs\d$/.test(name)) cue = { cfg: cfg || { root: 50, tempo: 80, mode: 'minor' }, seed: +name[2] + 3 };
+    if (!tr && !cue) tr = /^stage\d$/.test(name) ? TRACKS[name] : TRACKS.title;
+    this.tr = tr; this.cue = cue; this.step = 0; this.next = c.currentTime + 0.12;
+    this.tbus = c.createGain(); this.tbus.gain.value = 1; this.tbus.connect(this.music); this.V = voices(c, this.tbus, this.noiseBuf);
+    this.timer = setInterval(() => this.schedule(), 40); this.schedule();
   }
-  stop() { clearInterval(this.timer); this.timer = null; }
-  rnd() { this.seed = (this.seed * 1664525 + 1013904223) >>> 0; return this.seed / 4294967296; }
-  makeMelody() {
-    const m = []; let deg = 0;
-    for (let bar = 0; bar < 4; bar++) for (let i = 0; i < 16; i++) {
-      if (i % 4 === 0 || this.rnd() < 0.45) { deg = Math.max(-2, Math.min(9, deg + Math.floor(this.rnd() * 5) - 2)); m.push(deg); } else m.push(null);
-    }
-    return m;
-  }
+  stop() { clearInterval(this.timer); this.timer = null; if (this.tbus && this.ctx) { const g = this.tbus.gain, t = this.ctx.currentTime, b = this.tbus; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 0.12); setTimeout(() => { try { b.disconnect(); } catch (_) {} }, 400); } this.tbus = null; this.tr = null; this.cue = null; }
+  /** Fight layer: snare backbeat, hats and a doubled hook while a wave is on; calm groove otherwise. Switches on the next step, no restart. */
+  setIntense(on) { this.intense = !!on; }
+  /** One-shot stinger ('clear' = stage cleared, 'over' = game over). Replaces the music. */
+  jingle(name) { this.stop(); this.last = null; if (!this.ctx || this.muted) return; const c = this.ctx; this.tbus = c.createGain(); this.tbus.connect(this.music); playJingle(voices(c, this.tbus, this.noiseBuf), name, c.currentTime + 0.05); }
   schedule() {
-    if (!this.ctx) return; const c = this.ctx, spb = 60 / this.cfg.tempo / 4, scale = MODES[this.cfg.mode], root = this.cfg.root;
-    while (this.next < c.currentTime + 0.25) {
-      const s = this.step % 64, t = this.next, bar = Math.floor(s / 16);
-      const chordDeg = [0, 5, 3, 4][bar] % 7;
-      const note = d => { const o = Math.floor(d / 7); const k = ((d % 7) + 7) % 7; return root + 12 * o + scale[k]; };
-      if (s % 2 === 0) this.tone('triangle', mtof(note(chordDeg) - 12), t, spb * 1.8, 0.5, this.music);
-      if (s % 4 === 2) this.tone('triangle', mtof(note(chordDeg) - 12 + 12), t, spb, 0.25, this.music);
-      const md = this.melody[s]; if (md !== null && md !== undefined) this.tone('square', mtof(note(md + chordDeg) + 12), t, spb * 1.6, 0.18, this.music);
-      if (s % 8 === 0) { this.noise(t, 0.12, 0.5, this.music, 120); this.tone('sine', 110, t, 0.12, 0.6, this.music, 40); }
-      if (s % 8 === 4) this.noise(t, 0.1, 0.4, this.music, 1500);
-      if (s % 2 === 1) this.noise(t, 0.03, 0.12, this.music, 6000);
+    if (!this.ctx || !this.V || (!this.tr && !this.cue)) return; const c = this.ctx;
+    const spb = this.tr ? 60 / this.tr.tempo / 4 : 60 / this.cue.cfg.tempo / 2;
+    while (this.next < c.currentTime + 0.3) {
+      if (this.tr) playStep(this.V, this.tr, this.step, this.next, { intense: this.intense }); else playCue(this.V, this.cue.cfg, this.step, this.next, this.cue.seed);
       this.step++; this.next += spb;
     }
   }

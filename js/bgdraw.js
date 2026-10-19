@@ -24,6 +24,22 @@ const LM = {
     g.fillStyle = 'rgba(8,10,16,0.75)'; g.fillText(t, x + 0.4, y + 3.4); g.fillStyle = 'rgba(214,206,170,0.92)'; g.fillText(t, x, y + 2.8); g.restore(); },
   sign(x, gy, t, bg, fg) { const w = t.length * 6 + 10; R(x - w / 2 + 3, gy - 14, 2, 14, '#2a2418'); R(x + w / 2 - 5, gy - 14, 2, 14, '#2a2418'); box(x - w / 2, gy - 30, w, 16, bg); R(x - w / 2 + 2, gy - 28, w - 4, 1, sh(fg, 0.55)); text(t, x, gy - 16, fg); },
   hsign(x, gy, t, bg, fg) { const w = t.length * 6 + 12, y = gy - 50; R(x - w / 2, y - 8, w, 2, '#1a1a20'); R(x - w / 2 + 4, y - 6, 1, 6, '#6a6a72'); R(x + w / 2 - 5, y - 6, 1, 6, '#6a6a72'); box(x - w / 2, y, w, 16, bg); R(x - w / 2 + 2, y + 2, w - 4, 1, sh(fg, 0.55)); text(t, x, y + 14, fg); },
+  /** Painted-style hanging gate sign, all in code so it matches the pixel HUD font: a dark plank board with nails, hung by two short iron chains from eye-hooks on the arch's stone ledge. x = board centre, centred on the arch. */
+  gatesign(x, gy, t) {
+    const w = t.length * 6 + 14, h = 14, bx = Math.round(x - w / 2), by = 71, ledge = 61;
+    for (const cx of [bx + 6, bx + w - 8]) {
+      R(cx, ledge - 1, 2, 2, '#9a9aa6'); R(cx, ledge + 1, 2, 1, '#2a2a32'); // eye-hook plate on the ledge
+      for (let yy = ledge + 2, k = 0; yy < by; yy += 2, k++) { R(cx, yy, 2, 2, k % 2 ? '#4a4a54' : '#a4a4b0'); R(cx + 1, yy + 1, 1, 1, '#1a1a20'); } // chain links
+    }
+    R(bx + 2, by + h, w - 2, 2, 'rgba(0,0,0,.35)'); // soft shadow on the wall under the board
+    R(bx - 1, by - 1, w + 2, h + 2, '#1a0e06'); R(bx, by, w, h, '#6e4220'); // outline + wood
+    R(bx, by, w, 1, '#a86a38'); R(bx, by + h - 1, w, 1, '#3e2210'); R(bx, by + 1, w, 1, '#8a5428'); // top highlight, bottom shade
+    R(bx, by + 7, w, 1, '#4e2e14'); // plank seam
+    for (let i = 0; i < 5; i++) R(bx + 3 + ((i * 11) % (w - 8)), by + 3 + (i * 5) % 9, 5, 1, '#5a3418'); // wood grain flecks
+    R(bx + 1, by + 1, 1, h - 2, '#8a5428'); R(bx + w - 2, by + 1, 1, h - 2, '#4a2a12'); // side bevels
+    for (const [nx, ny] of [[bx + 2, by + 2], [bx + w - 3, by + 2], [bx + 2, by + h - 3], [bx + w - 3, by + h - 3]]) { R(nx, ny, 1, 1, '#d6d0c0'); } // nail heads
+    drawText(g, t, x, by + 10, '#ffe9a0', 8, 'center', '#2a1408'); // same bitmap font as the HUD
+  },
   bush(x, gy, w, c) { for (let i = 0; i < 4; i++) blob(x + (i - 1.5) * w / 4, gy - 5 - (i % 2) * 3, w / 3.2, 8, '#0c1a10'); for (let i = 0; i < 4; i++) { blob(x + (i - 1.5) * w / 4, gy - 6 - (i % 2) * 3, w / 3.4, 7, c); blob(x + (i - 1.5) * w / 4 - 2, gy - 9 - (i % 2) * 3, w / 7, 3, sh(c, 1.5)); } },
   tree(x, gy, h) { R(x - 3, gy - h, 6, h, '#2a1c12'); R(x - 3, gy - h, 2, h, '#4a3220'); for (const [dx, dy, r] of [[0, 0, 20], [-16, 8, 15], [16, 8, 15], [-6, -8, 14], [8, -6, 13]]) blob(x + dx, gy - h + dy, r, r * 0.8, '#10281a'); for (const [dx, dy, r] of [[-4, -3, 10], [10, 4, 7], [-14, 6, 6]]) blob(x + dx, gy - h + dy, r, r * 0.7, '#1e4a2a'); },
   stand(x, gy, c1, c2, t) { box(x, gy - 22, 40, 22, '#3a2c22'); R(x + 3, gy - 18, 34, 8, '#14100c'); R(x + 3, gy - 10, 34, 3, '#7a5a38'); for (let i = 0; i < 8; i++) R(x - 2 + i * 5, gy - 34, 5, 10, i % 2 ? c2 : c1); R(x - 2, gy - 25, 44, 1, '#10121a'); R(x - 2, gy - 35, 44, 1, '#10121a'); text(t, x + 20, gy - 38, '#ffe9a0'); },
