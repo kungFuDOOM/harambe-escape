@@ -494,5 +494,5 @@ addEventListener('pagehide', checkpointIfLive);
 addEventListener('beforeunload', checkpointIfLive);
 document.addEventListener('visibilitychange', () => { if (document.hidden) { checkpointIfLive(); if (G.mode === 'play' && !G.paused && !G.menu) openPause(); } last = performance.now(); acc = 0; }); // hide = auto-pause; no catch-up burst on return
 G.save = readSave(STAGES.length);
-loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { document.body.insertAdjacentHTML('beforeend', '<pre style="color:#f66">Failed to load art: ' + e.message + '</pre>'); });
+loadAssets().then(() => { if (qs.has('debugstart')) { audio.init(); newGame(); G.mode = 'play'; } requestAnimationFrame(frame); }).catch(e => { { const pre = document.createElement('pre'); pre.style.color = '#f66'; pre.textContent = 'Failed to load art: ' + e.message; document.body.appendChild(pre); } });
 // { audio.init(); newGame(); G.mode = 'play'; }
