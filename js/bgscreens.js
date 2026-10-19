@@ -52,7 +52,7 @@ export const SCREENS = {
       { name: 'Conference Wing', plate: 'fbi-conference', top: rgb(214, 226, 250), bot: rgb(230, 238, 250), lm: [['table', 190]], lights: [] },
       { name: 'Server Room', plate: 'fbi-server', top: rgb(150, 190, 240), bot: rgb(186, 208, 240), lm: [['cart', 60]], lights: [], blink: 1 },
       { name: 'Archives', plate: 'fbi-archive', top: rgb(240, 214, 176), bot: rgb(246, 230, 204), warm: [255, 160, 50, 0.07], lm: [['cart', 290]], lights: [] },
-      { name: 'Elevator Bank', plate: 'fbi-elevators', top: rgb(222, 224, 232), bot: rgb(232, 232, 238), lm: [['sign', 238, 'DIRECTOR', '#1a1a22', '#ffd070'], ['plant', 300]], lights: [[70, 40, 22, [255, 240, 200], 1], [160, 40, 22, [255, 240, 200], 1]] },
+      { name: 'Elevator Bank', plate: 'fbi-elevators', top: rgb(222, 224, 232), bot: rgb(232, 232, 238), lm: [['plant', 300]], lights: [[70, 40, 22, [255, 240, 200], 1], [160, 40, 22, [255, 240, 200], 1]] },
       { name: "Director's Office", plate: 'fbi-director', top: rgb(232, 186, 186), bot: rgb(238, 210, 206), warm: [255, 40, 40, 0.06], lm: [], lights: [[160, 30, 40, [255, 90, 80], 1]], siren: 1 },
     ],
   },
