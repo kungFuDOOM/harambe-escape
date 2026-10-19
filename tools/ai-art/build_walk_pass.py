@@ -48,15 +48,12 @@ def build_frame(name, m, sheet):
     (x0, y0, x1, y1), mask = max(comps, key=lambda c: c[1].sum())
     rgba = to_rgba(src, mask)[y0:y1, x0:x1]
     im = Image.fromarray(rgba, 'RGBA')
-    if name == 'harambe': th = int(np.median([m['frames'][i]['h'] for i in range(24, 36)]))
-    else: th = m['frames'][0]['h']
-    # The generated poses have slightly longer legs than the sheet art, so a pure height match leaves the head/shoulders ~7% small.
-    # Split the difference: grow by half the head-width shortfall (capped at 5%), which also gives the passing pose its natural lift.
-    ref_i = 24 if name == 'harambe' else 0
-    def head_w(al): h = al.shape[0]; return float(np.median([al[y].sum() for y in range(int(h * .04), int(h * .14))]))
-    t0 = im.resize((max(1, int(round(im.width * th / im.height))), th), Image.LANCZOS)
-    ratio = head_w(np.array(t0)[..., 3] > 128) / head_w(np.array(crop(sheet, m['frames'][ref_i]))[..., 3] > 40)
-    th = int(round(th * min(1.05, max(1.0, 1 + (1 / ratio - 1) * 0.5)) * SCALE_FIX.get(name, 1.0)))
+    # Height = the stride frame it alternates with (Harambe: median of his walk frames), so the head stays level between
+    # contact and passing. (An earlier version grew the pose to compensate for the smaller generated heads; together with the
+    # bob that popped heads up 3-8 game px on every passing pose and read as skipping.)
+    stride_i = 24 if name == 'harambe' else max(m['anims']['walk'])
+    th = int(np.median([m['frames'][i]['h'] for i in range(24, 36)])) if name == 'harambe' else m['frames'][stride_i]['h']
+    th = int(round(th * SCALE_FIX.get(name, 1.0)))
     tw = max(1, int(round(im.width * th / im.height)))
     # premultiplied resize so transparent magenta never bleeds into the edge colours
     a = np.array(im).astype(float); a[..., :3] *= a[..., 3:4] / 255
@@ -69,7 +66,6 @@ def build_frame(name, m, sheet):
     # trim to content (keeps ay == h on the feet)
     bb = fr.getbbox(); fr = fr.crop(bb)
     # pivot: same upper-body offset as the stride frame this pose alternates with
-    stride_i = m['anims']['walk'][0] if name == 'harambe' else max(m['anims']['walk'])
     sf = m['frames'][stride_i]; sal = np.array(crop(sheet, sf))[..., 3] > 40
     off = sf['ax'] - chest_x(sal)
     nal = np.array(fr)[..., 3] > 40
@@ -84,7 +80,7 @@ def build_frame(name, m, sheet):
 
 def main(names):
     meta = json.load(open(META))
-    for name in names or sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.jpg')):
+    for name in names or sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.jpg') and '__' not in f):
         m = meta[name]; path = os.path.join(ROOT, 'assets', m['img'])
         sheet = Image.open(path).convert('RGBA')
         if 'pass' in m['anims']:  # idempotent: drop the previous pass frame (always the last frame, at the right edge)
@@ -98,9 +94,11 @@ def main(names):
         ns = Image.new('RGBA', (W, H), (0, 0, 0, 0)); ns.paste(sheet, (0, 0)); ns.paste(fr, (sheet.width + 2, 0))
         m['frames'].append({'x': sheet.width + 2, 'y': 0, 'w': fr.width, 'h': fr.height, 'ax': ax, 'ay': fr.height})
         m['anims']['pass'] = [len(m['frames']) - 1]
-        if name == 'harambe':  # contact, down, PASSING, up for each leg: the new pose replaces the blobby rebuilt passing frames 27/28 and 32/33
+        if name == 'harambe':  # contact, down, PASSING, up. The painted pose has the NEAR leg swinging forward, so it may only replace the
+            # passing frames that lead into frame 24 (near leg forward): 32/33. Using it before frame 30 (far leg forward) too put the same
+            # leg forward twice in a row = a step-hop. 27/28 (far leg swinging) stay until a far-leg passing pose is painted.
             P = m['anims']['pass'][0]; base = list(range(24, 36))
-            m['anims']['walk'] = [P if j in (3, 4, 8, 9) else base[j] for j in range(12)]
+            m['anims']['walk'] = [P if j in (8, 9) else base[j] for j in range(12)]
         ns.save(path, optimize=True)
         print(f"{name}: pass frame {fr.width}x{fr.height} ax {ax} -> index {m['anims']['pass'][0]}")
     with open(META, 'w') as fh: json.dump(meta, fh, separators=(',', ':'))

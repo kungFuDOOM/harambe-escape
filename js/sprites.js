@@ -46,13 +46,14 @@ function sprWhite(ctx, name, x, y) {
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
 export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
-/** Body bob for one step, phase 0..1 with the footfall at 0: the torso is lowest just after the foot lands (squash) and
- * highest on the passing pose. Returns device px (+ = down). `amp` = peak offset, `k` = 0..1 blend (eases in from idle). */
+/** Body bob for one step, phase 0..1 with the footfall at 0. Down-only: the torso settles at most `amp` device px just after
+ * the foot lands (lowest at phase LOW, the frame after contact) and is back at standing height through the passing pose,
+ * never above it, so nothing pops up (an up-and-down bob plus a sharp landing dip read as skipping). Smooth cosine, no spike.
+ * `k` = 0..1 blend (eases in from idle). Returns device px (+ = down). */
+const LOW = 0.15;
 export function stepBob(ph, amp, k = 1) {
   ph = ((ph % 1) + 1) % 1;
-  const base = Math.cos(ph * Math.PI * 2) * amp; // +amp at contact, -amp at passing
-  const land = ph < 0.12 ? (1 - ph / 0.12) * amp * 0.6 : 0; // extra dip right on the footfall
-  return (base + land) * k;
+  return amp * (0.5 + 0.5 * Math.cos((ph - LOW) * Math.PI * 2)) * k;
 }
 /** Harambe's walk phase (0..12, contacts on 0 and 6) from ground distance travelled. */
 export const harambePhase = wd => ((wd / WALK_PX) % 12 + 12) % 12;
@@ -63,7 +64,7 @@ export function drawHarambe(ctx, s) {
   switch (state) {
     case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
       anim = 'walk'; i = harambePhase(s.wd != null ? s.wd : t * 82);
-      bob = stepBob((i % 6) / 6, 3, s.ramp ?? 1); break; } // heavy gorilla: 3 device px dip on each footfall, eased in with the start-of-walk ramp
+      bob = stepBob((i % 6) / 6, 2, s.ramp ?? 1); break; } // settles 2 device px (under 1 game px) after each footfall, eased in with the start-of-walk ramp
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
@@ -73,7 +74,7 @@ export function drawHarambe(ctx, s) {
     case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
     default:
       if (s.stopT > 0 && s.stopFrom != null) { // walk -> idle: finish the step onto the next contact pose instead of snapping out mid-stride
-        const to = s.stopFrom < 6 ? 6 : 12, k = 1 - s.stopT / STOP_T; anim = 'walk'; i = (s.stopFrom + (to - s.stopFrom) * k) % 12; bob = stepBob((i % 6) / 6, 3, 1 - k); break; }
+        const to = s.stopFrom < 6 ? 6 : 12, k = 1 - s.stopT / STOP_T; anim = 'walk'; i = (s.stopFrom + (to - s.stopFrom) * k) % 12; bob = stepBob((i % 6) / 6, 2, 1 - k); break; }
       anim = 'idle'; i = (t * 3) % 4;
   }
   blitFrame(ctx, 'harambe', anim, i, x, y - z, face, flash, bob);
@@ -113,7 +114,7 @@ export function drawHuman(ctx, s) {
     case 'walk': case 'run': {
       if (s.moving === false) { anim = 'idle'; break; } // standing still in the walk/chase state (already at its slot): no treading in place
       const wd = s.wd != null ? s.wd : t * (state === 'run' ? 90 : 36), p = enemyWalkPose(type, wd, m.anims);
-      frame = p.frame; bob = stepBob(p.ph, type.startsWith('boss') ? 3 : 2); break; }
+      frame = p.frame; bob = stepBob(p.ph, 2); break; } // <= 1 game px
     case 'windup': anim = 'windup'; i = (t * 8) % m.anims.windup.length; break;
     case 'atk': anim = 'atk'; i = Math.min(m.anims.atk.length - 1, Math.floor(at * m.anims.atk.length)); break;
     case 'hurt': anim = 'hurt'; i = 0; break;
