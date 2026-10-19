@@ -7,6 +7,8 @@ export function dropState(t, warn = 0.95, fall = 0.3, h0 = 150) {
   const k = (t - warn) / fall; return k >= 1 ? { phase: 'land', z: 0, k: 1 } : { phase: 'fall', z: h0 * (1 - k * k), k };
 }
 /** A vehicle / boulder sweeping the lane band hits things in its row that are not jumping over it. */
+/** Stage 2 car hitbox: half length and row depth, sized to the painted cars (~126-142 px long). */
+export const CAR_HALF = 58, CAR_DEPTH = 14;
 export function sweepHit(h, tgt, halfLen = 28, rowDepth = 11, clearZ = 16) {
   return Math.abs(h.x - tgt.x) < halfLen + (tgt.w || 14) / 2 && Math.abs(h.y - tgt.y) < rowDepth && (tgt.z || 0) < clearZ;
 }

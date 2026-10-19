@@ -10,7 +10,7 @@ import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
 import { fetchTop, getName, getLast, setLast } from './leaderboard.js';
 import { openPrompt, promptOpen } from './lbui.js';
-import { dropState, sweepHit, lobVel, pickLoot, LOOT, spotUpdate, eliteMods, LOB_G } from './hazlogic.js';
+import { dropState, sweepHit, CAR_HALF, CAR_DEPTH, lobVel, pickLoot, LOOT, spotUpdate, eliteMods, LOB_G } from './hazlogic.js';
 import { drawHazMarkers, hazardEntries, drawLobMarkers, drawItem, drawEliteRing } from './hazdraw.js';
 import { makeSave, keepFurthest, writeSave, readSave, clearSave } from './save.js';
 
@@ -340,9 +340,9 @@ function bossPick(e, dx, dy) {
 function spawnHaz(spec) {
   const L = G.lane, p = G.p, rowY = () => L.top + 8 + Math.random() * (L.bot - L.top - 16);
   if (spec.kind === 'drop') { const near = Math.random() < 0.45, x = clamp(near ? p.x + (Math.random() - 0.5) * 60 : G.cam + 30 + Math.random() * (W - 60), G.cam + 24, G.cam + W - 24); G.haz.push({ k: 'drop', obj: spec.obj || 'crate', x, y: L.top + 4 + Math.random() * (L.bot - L.top - 8), t: 0, z: 150 }); }
-  else if (spec.kind === 'car') { const dir = Math.random() < 0.5 ? 1 : -1; G.haz.push({ k: 'car', y: rowY(), dir, x: dir > 0 ? G.cam - 70 : G.cam + W + 70, t: 0, hit: new Set(), col: ['#c83a2a', '#2a6ac8', '#e0b020', '#3a9a5a'][(Math.random() * 4) | 0] }); }
+  else if (spec.kind === 'car') { const dir = Math.random() < 0.5 ? 1 : -1; G.haz.push({ k: 'car', y: rowY(), dir, x: dir > 0 ? G.cam - 80 : G.cam + W + 80, t: 0, hit: new Set(), v: (Math.random() * 3) | 0 }); }
   else if (spec.kind === 'roll') G.haz.push({ k: 'roll', y: rowY(), dir: -1, x: G.cam + W + 40, t: 0, hit: new Set() });
-  else if (spec.kind === 'spot' && G.haz.filter(h => h.k === 'spot').length < 2) G.haz.push({ k: 'spot', x: G.cam + W * 0.7, y: (L.top + L.bot) / 2, t: 0, seen: 0, cool: 1.5, life: 16, flash: 0 });
+  else if (spec.kind === 'spot' && G.haz.filter(h => h.k === 'spot').length < 2) G.haz.push({ k: 'spot', x: G.cam + W * 0.7, y: (L.top + L.bot) / 2, ax: G.cam + W * 0.88, ay: L.top - 2, t: 0, seen: 0, cool: 1.5, life: 16, flash: 0 });
 }
 function updateEncounter(dt, st) {
   const p = G.p, dmgM = 0.8 * st.diff.dmg;
@@ -365,9 +365,9 @@ function updateEncounter(dt, st) {
         if (h.obj === 'crate') { (G.rubble ||= []).push({ x: h.x, y: h.y, kind: 'crate', t: 0 }); if (Math.random() < 0.3) G.items.push({ x: h.x, y: h.y, kind: 'banana', heal: 20 }); } } }
     else if (h.k === 'car' || h.k === 'roll') {
       const car = h.k === 'car', warn = car ? 1.1 : 0.9; if (h.t <= warn) continue;
-      h.x += h.dir * (car ? 290 : 125) * dt; const half = car ? 28 : 13;
-      if (!h.hit.has(p) && p.state !== 'dead' && sweepHit(h, p, half)) { h.hit.add(p); hurtPlayer(Math.round((car ? 14 : 16) * dmgM), h.x - h.dir * 20, true); popText(car ? 'HONK!' : 'CRUSHED!', p.x, p.y - 80, '#d8d8a0', 0.6); }
-      for (const e of G.ents) if (alive(e) && !h.hit.has(e) && sweepHit(h, e, half)) { h.hit.add(e); hurtEnemy(e, 22, true, { x: h.x, face: h.dir }, true); popText(car ? 'ROADKILL!' : 'SQUASHED!', e.x, e.y - 100, '#ff9a2a', 0.8); }
+      h.x += h.dir * (car ? 290 : 125) * dt; const half = car ? CAR_HALF : 16, depth = car ? CAR_DEPTH : 11;
+      if (!h.hit.has(p) && p.state !== 'dead' && sweepHit(h, p, half, depth)) { h.hit.add(p); hurtPlayer(Math.round((car ? 14 : 16) * dmgM), h.x - h.dir * 20, true); popText(car ? 'HONK!' : 'CRUSHED!', p.x, p.y - 80, '#d8d8a0', 0.6); }
+      for (const e of G.ents) if (alive(e) && !h.hit.has(e) && sweepHit(h, e, half, depth)) { h.hit.add(e); hurtEnemy(e, 22, true, { x: h.x, face: h.dir }, true); popText(car ? 'ROADKILL!' : 'SQUASHED!', e.x, e.y - 100, '#ff9a2a', 0.8); }
       if (h.x < G.cam - 120 || h.x > G.cam + W + 120) h.done = true; }
     else if (h.k === 'spot') {
       h.life -= dt; h.flash = Math.max(0, h.flash - dt);

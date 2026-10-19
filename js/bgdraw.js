@@ -28,10 +28,8 @@ const LM = {
   tree(x, gy, h) { R(x - 3, gy - h, 6, h, '#2a1c12'); R(x - 3, gy - h, 2, h, '#4a3220'); for (const [dx, dy, r] of [[0, 0, 20], [-16, 8, 15], [16, 8, 15], [-6, -8, 14], [8, -6, 13]]) blob(x + dx, gy - h + dy, r, r * 0.8, '#10281a'); for (const [dx, dy, r] of [[-4, -3, 10], [10, 4, 7], [-14, 6, 6]]) blob(x + dx, gy - h + dy, r, r * 0.7, '#1e4a2a'); },
   stand(x, gy, c1, c2, t) { box(x, gy - 22, 40, 22, '#3a2c22'); R(x + 3, gy - 18, 34, 8, '#14100c'); R(x + 3, gy - 10, 34, 3, '#7a5a38'); for (let i = 0; i < 8; i++) R(x - 2 + i * 5, gy - 34, 5, 10, i % 2 ? c2 : c1); R(x - 2, gy - 25, 44, 1, '#10121a'); R(x - 2, gy - 35, 44, 1, '#10121a'); text(t, x + 20, gy - 38, '#ffe9a0'); },
   bench(x, gy) { R(x, gy - 12, 26, 3, '#5a3a1e'); R(x, gy - 16, 26, 3, '#6a4624'); R(x + 2, gy - 9, 2, 9, '#1a1a1a'); R(x + 22, gy - 9, 2, 9, '#1a1a1a'); },
-  lights(x, gy, w) { g.strokeStyle = '#1a1a1a'; g.lineWidth = 0.4; g.beginPath(); g.moveTo(q(x), 50); g.quadraticCurveTo(q(x + w / 2), 64, q(x + w), 50); g.stroke(); for (let i = 1; i < 8; i++) { const t = i / 8, px = x + w * t, py = 50 + 12 * (1 - (2 * t - 1) ** 2) * 1.0; R(px - 1, py, 2, 2, ['#ffd070', '#ff8a50', '#fff2a0'][i % 3]); } },
   lamp(x, gy, c) { R(x - 1, gy - 52, 3, 52, '#15171c'); R(x - 1, gy - 52, 1, 52, '#3a3e48'); R(x - 5, gy - 56, 11, 3, '#15171c'); R(x - 4, gy - 53, 9, 3, c); blob(x, gy - 54, 5, 3, c); },
   cage(x, gy, w, c) { box(x, gy - 54, w, 54, '#14110e'); R(x + 2, gy - 50, w - 4, 46, '#07060a'); for (let i = 0; i <= w / 6; i++) R(x + 3 + i * 6, gy - 52, 1.5, 50, '#6a6a72'); R(x + 2, gy - 38, w - 4, 1.5, '#6a6a72'); R(x + 2, gy - 18, w - 4, 1.5, '#6a6a72'); R(x + w * 0.4, gy - 30, 3, 2, '#ffd23a'); R(x + w * 0.4 + 9, gy - 30, 3, 2, '#ffd23a'); blob(x + w * 0.5, gy - 20, 14, 8, '#2a1a0c'); },
-  bus(x, gy) { if (A.props && A.props.zoobus) { const r = A.props.zoobus; g.drawImage(A.propsImg, r[0], r[1], r[2], r[3], q(x - r[2] / 2), q(gy - r[3] + 4), r[2], r[3]); } },
   cone(x, gy) { R(x - 4, gy - 2, 8, 2, '#202020'); for (let i = 0; i < 8; i++) R(x - 3 + i * 0.4, gy - 3 - i, 6 - i * 0.8, 1, i % 4 < 2 ? '#ff7a1a' : '#f4f4f4'); },
   dumpster(x, gy) { box(x, gy - 18, 34, 18, '#2c4a38'); R(x - 1, gy - 22, 36, 4, '#1e3628'); R(x + 3, gy - 14, 28, 1, '#14281c'); R(x + 3, gy - 9, 28, 1, '#14281c'); R(x + 4, gy - 3, 3, 3, '#000'); R(x + 27, gy - 3, 3, 3, '#000'); },
   hydrant(x, gy) { box(x - 4, gy - 14, 8, 14, '#b0281c'); R(x - 6, gy - 10, 12, 3, '#c83a2a'); blob(x, gy - 15, 4, 3, '#b0281c'); },
@@ -97,6 +95,8 @@ const faceOf = s => s.r.length >= 8 ? [s.r[4], s.r[5], s.r[6], s.r[7]] : null;
 const pick = (x, n) => Math.abs(Math.round(x * 7 + n)) % n;
 const SPRL = ['', 'a', 'b', 'c'];
 const SP = {
+  bus(x, gy) { return !!spr('bus', x, gy, { dy: 4 }); }, // painted open-air zoo tram (assets/props/haz.webp)
+  lights(x, gy, w) { const s = A.sp.lights; return !!(s && spr('lights', x, gy, { mode: 'left', top: 46, sw: w * S / s.r[2] })); }, // painted string lights, stretched to the span
   sign(x, gy, t, bg, fg) { const tw = t.length * 6, nm = tw <= 26 ? 'sign_s' : tw <= 48 ? 'sign_m' : 'sign_l', s0 = A.sp[nm]; if (!s0) return false; const f = faceOf(s0);
     const sc = Math.max(0.55, Math.min(1, (tw + 12) / (f[2] / S))); // board only as wide as its lettering needs
     const r = spr(nm, x, gy, { dy: 2, tint: bg, face: f, sc }); const cx = r.x + (f[0] + f[2] / 2) / S * sc, cy = r.y + (f[1] + f[3] / 2) / S * sc; text(t, cx, cy + 3, fg); return true; },
