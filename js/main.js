@@ -13,6 +13,7 @@ import { openPrompt, promptOpen } from './lbui.js';
 import { dropState, sweepHit, CAR_HALF, CAR_DEPTH, lobVel, pickLoot, LOOT, spotUpdate, eliteMods, LOB_G } from './hazlogic.js';
 import { drawHazMarkers, hazardEntries, drawLobMarkers, drawItem, drawEliteRing } from './hazdraw.js';
 import { makeSave, keepFurthest, writeSave, readSave, clearSave } from './save.js';
+import { stepLoco, LOCO } from './loco.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const SCALE = cv.width / W; // canvas is 3x the 320x180 logic grid; art is baked at that resolution
@@ -214,13 +215,8 @@ function updatePlayer(dt) {
   const p = G.p, ax = input.axis(); p.t += dt; p.st += dt; p.inv = Math.max(0, p.inv - dt);
   p.comboT -= dt; if (p.comboT <= 0 && p.state !== 'atk') p.n = 0; p.rage = Math.max(0, (p.rage || 0) - dt);
   const free = p.state === 'idle' || p.state === 'walk';
-  if (free) {
-    const dn = ax.x && ax.y ? 0.8 : 1; // diagonals no longer faster than straight lines (was 97 px/s)
-    p.ramp = (ax.x || ax.y) ? Math.min(1, (p.ramp ?? 0) + dt / 0.07) : 0; // 70 ms ease-in so a step starts with a push, not an instant 82 px/s
-    const mx = ax.x * 82 * dn * (0.35 + 0.65 * p.ramp), my = ax.y * 52 * dn * (0.35 + 0.65 * p.ramp);
-    const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
-    if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') p.wd = 0; // every walk starts on the contact pose, never mid-stride
-  }
+  if (free) stepLoco(p, ax, dt, G.lane);
+  else { p.mvx = 0; p.mvy = 0; p.engageT = 0; p.turnT = 0; } // a swing stops the glide; knockback still uses vx, not mvx
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
   if (input.take('atk')) {
     if (p.z > 1 && p.state !== 'jatk') { p.state = 'jatk'; p.st = 0; p.hit.clear(); audio.sfx('swing'); }
@@ -474,7 +470,7 @@ function drawWorld() {
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); if (e.tag) drawEliteRing(ctx, e, e.x - cam, G.t); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
     drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
   const p = G.p; list.push({ y: p.y, f: () => { shadow(ctx, p.x - cam, p.y, 44); if (p.inv > 0 && Math.floor(G.t * 20) % 2 && p.state !== 'special') return; if (p.rage > 0) { ctx.strokeStyle = `rgba(255,80,40,${0.5 + 0.4 * Math.sin(G.t * 14)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y, 26, 8, 0, 0, 7); ctx.stroke(); }
-    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
+    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, turn: (p.state === 'walk' || p.state === 'idle') && p.turnT > 0 ? p.turnT / LOCO.turn : 0, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const n of G.proj) { if (n.lob) shadow(ctx, n.x - cam, n.y, 10); drawProj(ctx, { ...n, x: n.x - cam }, G.t); }
   for (const f of G.fx) { const k = f.t / 0.3, x = f.x - cam; if (f.ring) { ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, f.y, 10 + k * 56, 4 + k * 18, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = `rgba(255,200,60,${1 - k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, f.y, 6 + k * 50, 2 + k * 15, 0, 0, 7); ctx.stroke(); } else if (f.dust) drawDust(ctx, x, f.y, k); else drawSpark(ctx, x, f.y - 32, k, f.big); }
@@ -498,7 +494,7 @@ function drawTitle() {
   shadow(ctx, 250, 160, 36); drawHuman(ctx, { type: 'keeper_stun', x: 250, y: 160, face: -1, t: G.t, state: 'walk' });
   shadow(ctx, 288, 172, 36); drawHuman(ctx, { type: 'cop_baton', x: 288, y: 172, face: -1, t: G.t + 1, state: 'walk' });
   if (G.menu && G.menu.kind === 'confirm') drawPause(); else if (G.menu) drawMenu(G.menu);
-  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0') + '   BY KUNGFUDOOM', W / 2, 175, '#c8d0e0', 7, 'center');
+  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, 175, '#c8d0e0', 7, 'center');
 }
 function stageIntro() {
   const st = STAGES[G.stage]; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);

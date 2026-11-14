@@ -1,14 +1,15 @@
 // Sprite drawing: frames come from pre-rendered, shaded & outlined 16-bit style sheets (tools/art).
 import { A } from './assets.js';
+import { WALK_FRAMES, WALK_PX } from './loco.js';
 
 const S = 3; // device px per logic px: atlas frames are baked at 3x
 const q3 = v => Math.round(v * S) / S; // snap to device pixels so sprites never shimmer
-/** Draw one atlas frame anchored at its feet (ax, ay). `face` < 0 mirrors it. */
-function blitFrame(ctx, sheetName, anim, i, x, y, face, flash) {
+/** Draw one atlas frame anchored at its feet (ax, ay). `face` < 0 mirrors it. `sx`/`sy` squash a turn. */
+function blitFrame(ctx, sheetName, anim, i, x, y, face, flash, sx = 1, sy = 1) {
   const m = A.atlas[sheetName]; if (!m) return;
   const a = m.anims[anim] || m.anims.idle, f = m.frames[a[Math.max(0, Math.min(a.length - 1, i | 0))]];
   const img = flash ? A.flash[sheetName] : A.sheets[sheetName];
-  ctx.save(); ctx.translate(q3(x), q3(y)); if (face < 0) ctx.scale(-1, 1);
+  ctx.save(); ctx.translate(q3(x), q3(y)); ctx.scale((face < 0 ? -1 : 1) * sx, sy);
   ctx.drawImage(img, f.x, f.y, f.w, f.h, -f.ax / S, -f.ay / S, f.w / S, f.h / S); ctx.restore();
 }
 /** AI-generated prop (props_ai atlas, baked at 3x), anchored bottom-centre. `s` = extra scale, `face` < 0 mirrors. */
@@ -36,14 +37,14 @@ function sprWhite(ctx, name, x, y) {
 
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
-export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
+export { WALK_PX, WALK_FRAMES };
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0, bob = 0;
   switch (state) {
-    case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
-      anim = 'walk'; i = ((s.wd != null ? s.wd / WALK_PX : t * 82 / WALK_PX) % 12 + 12) % 12; break; }
+    case 'walk': { // phase is ground distance, so the planted foot stays down as speed changes (accel, stop, depth lanes)
+      anim = 'walk'; i = ((s.wd != null ? s.wd / WALK_PX : t * 82 / WALK_PX) % WALK_FRAMES + WALK_FRAMES) % WALK_FRAMES; break; }
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
@@ -53,7 +54,11 @@ export function drawHarambe(ctx, s) {
     case 'special': anim = 'special'; i = at < 0.25 ? 0 : at < 0.5 ? 1 : at < 0.7 ? 2 : at < 0.85 ? 1 : 3; break;
     default: anim = 'idle'; i = (t * 3) % 4;
   }
-  blitFrame(ctx, 'harambe', anim, i, x, y - z + bob, face, flash);
+  // turn is 1 at the start of a facing change and 0 at the end; pinch through profile and flip in the caller at the midpoint
+  const turn = s.turn || 0;
+  const pinch = turn > 0 ? Math.abs(turn * 2 - 1) : 1;
+  const sx = 0.22 + 0.78 * pinch, sy = 1 + (1 - sx) * 0.15;
+  blitFrame(ctx, 'harambe', anim, i, x, y - z + bob, face, flash, sx, sy);
 }
 
 /** Humans & bosses: s.type is the atlas character (e.g. 'cop_baton'). */

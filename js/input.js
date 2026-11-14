@@ -19,15 +19,21 @@ function pollPad() {
   for (const g of pads) { if (!g || !g.connected) continue;
     for (const b in GP) if (g.buttons[b] && g.buttons[b].pressed) now[GP[b]] = true;
     const ax = g.axes[0] || 0, ay = g.axes[1] || 0;
-    if (ax < -0.5) now.left = true; if (ax > 0.5) now.right = true; if (ay < -0.5) now.up = true; if (ay > 0.5) now.down = true; }
+    // engage at 0.5, release at 0.28, so a stick hovering on the threshold doesn't chatter
+    const held = (name, v, sign) => (padPrev[name] ? v * sign > 0.28 : v * sign > 0.5);
+    if (held('left', ax, -1)) now.left = true; if (held('right', ax, 1)) now.right = true;
+    if (held('up', ay, -1)) now.up = true; if (held('down', ay, 1)) now.down = true; }
+  padPrev = { left: !!now.left, right: !!now.right, up: !!now.up, down: !!now.down };
   for (const k of ['atk', 'jump', 'heavy', 'special', 'start', 'up', 'down', 'left', 'right']) core.set('pad', k, !!now[k]);
 }
 // ---- touch bookkeeping ----
 let stickId = null, stickType = '', sc = null, touchCount = 0, lastTouchT = 0;
+let stickPrev = { left: false, right: false, up: false, down: false };
+let padPrev = { left: false, right: false, up: false, down: false };
 const zone = document.getElementById('zone'), stick = document.getElementById('stick'), knob = document.getElementById('knob');
 const btnHold = new Map(); // pointerId -> {btn,key}
 function hideStick() { if (stick) stick.style.display = 'none'; if (knob) knob.style.transform = ''; }
-function releaseStick() { stickId = null; stickType = ''; sc = null; core.release('stick'); hideStick(); }
+function releaseStick() { stickId = null; stickType = ''; sc = null; stickPrev = { left: false, right: false, up: false, down: false }; core.release('stick'); hideStick(); }
 function releaseButtons() { btnHold.forEach(h => h.btn.classList.remove('on')); btnHold.clear(); core.release('btn:'); }
 // Release every on-screen touch input (stick + buttons). Called on blur/hide/pause/menu/stage/cutscene transitions.
 function releaseTouch() { releaseStick(); releaseButtons(); }
@@ -76,7 +82,7 @@ document.addEventListener('mouseleave', () => { /* mouse left the window: nothin
 function stickMove(e) {
   const dx = e.clientX - sc.x, dy = e.clientY - sc.y, r = 40, d = Math.hypot(dx, dy) || 1, m = Math.min(d, r);
   knob.style.transform = `translate(${(dx / d) * m}px,${(dy / d) * m}px)`;
-  const f = stickDirs(dx, dy); for (const k in f) core.set('stick', k, f[k]);
+  const f = stickDirs(dx, dy, 16, 0.5, stickPrev); stickPrev = f; for (const k in f) core.set('stick', k, f[k]);
 }
 if (zone) {
   zone.addEventListener('pointerdown', e => {

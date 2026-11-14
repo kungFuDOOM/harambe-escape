@@ -14,10 +14,13 @@ export function createCore() {
     anyDown() { return Object.keys(down).some(k => down[k]); },
   };
 }
-// stick vector -> direction flags (dead zone th px)
+// stick vector -> direction flags (dead zone th px, release hysteresis when `prev` is passed)
 // The minor axis only counts once it is at least half the major one, so a slightly off-axis thumb walks straight along the lane instead of drifting up/down; real diagonals (>~27deg) still work.
-export function stickDirs(dx, dy, th = 12, bias = 0.5) {
+// A direction that is already held stays held until the stick returns to 55% of the engage threshold, so a thumb resting on the edge of the dead zone doesn't flicker idle/walk.
+export function stickDirs(dx, dy, th = 16, bias = 0.5, prev = null) {
   const ax = Math.abs(dx), ay = Math.abs(dy);
-  const X = ax >= th && (ax >= ay ? true : ax >= ay * bias), Y = ay >= th && (ay >= ax ? true : ay >= ax * bias);
+  const thX = prev && (prev.left || prev.right) ? th * 0.55 : th;
+  const thY = prev && (prev.up || prev.down) ? th * 0.55 : th;
+  const X = ax >= thX && (ax >= ay ? true : ax >= ay * bias), Y = ay >= thY && (ay >= ax ? true : ay >= ax * bias);
   return { left: X && dx < 0, right: X && dx > 0, up: Y && dy < 0, down: Y && dy > 0 };
 }
