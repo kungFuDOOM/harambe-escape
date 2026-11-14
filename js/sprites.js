@@ -36,14 +36,23 @@ function sprWhite(ctx, name, x, y) {
 
 export function shadow(ctx, x, y, w = 16) { ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(Math.round(x), Math.round(y) + 1, w / 2, Math.max(2, w / 9), 0, 0, 7); ctx.fill(); }
 
-export const WALK_PX = 20 / 6; // ground distance (logic px) per walk frame: the stance foot slides back 60 device px (20 logic px) over 6 frames (tools/ai-art/build_walk.py)
+export const WALK_PX = 26 / 18; // logic px the body travels per walk frame (26 device px of stance-foot travel over 6 frames). tools/ai-art/build_walk.py
+/** Same number the atlas was built with, so a rebuilt cycle can't drift from the code. */
+export function walkPx() {
+  const v = A.atlas && A.atlas.harambe && A.atlas.harambe.walkPx;
+  return typeof v === 'number' ? v : WALK_PX;
+}
 /** Harambe: maps game state + timers to animation frames. */
 export function drawHarambe(ctx, s) {
   const { x, y, z = 0, face, t = 0, state, at = 0, flash, vz = 0 } = s;
   let anim = 'idle', i = 0, bob = 0;
+  const step = walkPx();
   switch (state) {
-    case 'walk': { // 12-frame two-step cycle (frames 0 and 6 are the contact poses); phase is driven by ground distance so the planted foot never slides
-      anim = 'walk'; i = ((s.wd != null ? s.wd / WALK_PX : t * 82 / WALK_PX) % 12 + 12) % 12; break; }
+    case 'walk': { // 12-frame two-step cycle; frames 0 and 6 are the contacts. Phase follows ground distance, so the planted foot stays put at any speed.
+      anim = 'walk'; i = ((s.wd != null ? s.wd / step : t * 82 / step) % 12 + 12) % 12; break; }
+    case 'idle': // a held opposite contact (plant 6) keeps the feet where the step ended; otherwise the breathing idle, which matches contact 0
+      if (s.plant) { anim = 'walk'; i = s.plant; break; }
+      anim = 'idle'; i = (t * 3) % 4; break;
     case 'atk': anim = 'atk' + Math.min(3, Math.max(1, s.combo || 1)); i = at < 0.3 ? 0 : at < 0.75 ? 1 : 2; break;
     case 'heavy': anim = 'heavy'; i = at < 0.3 ? 0 : at < 0.4 ? 1 : at < 0.68 ? 2 : 3; break;
     case 'jump': anim = 'jump'; i = vz > 70 ? 0 : vz > -40 ? 1 : 2; break;
