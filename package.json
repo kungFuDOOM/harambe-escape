@@ -1,1 +1,1 @@
-{ "name": "harambe-escape", "private": true, "type": "module", "scripts": { "test": "node --test tests/", "start": "python3 -m http.server 8080" } }
+{ "name": "harambe-escape", "private": true, "type": "module", "scripts": { "test": "node --test tests/*.js", "start": "python3 -m http.server 8080" } }

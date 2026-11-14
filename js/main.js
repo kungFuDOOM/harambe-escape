@@ -4,7 +4,7 @@ import { input } from './input.js';
 import { audio } from './audio.js';
 import { drawBG, laneOf } from './bg.js';
 import { loadAssets, A } from './assets.js';
-import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr } from './sprites.js';
+import { shadow, drawHarambe, drawHuman, drawKid, drawProp, drawBanana, drawRubble, drawHeart, drawProj, drawText, drawSpark, drawDust, drawLogo, textWidth, spr, walkPx } from './sprites.js';
 import { INTRO, drawOutro } from './scenes.js';
 import { drawCutscene, stepCutscene } from './cutscene.js';
 import { CUTSCENES } from './story.js';
@@ -27,7 +27,7 @@ const G = {
 window.__input = input; window.__game = G; window.__stages = STAGES; // QA hooks
 
 function newPlayer() {
-  return { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, vx: 0, vy: 0, vz: 0, face: 1, hp: 100, max: 100, lives: 3, state: 'idle', t: 0, st: 0, n: 0, comboT: 0, buf: false, inv: 0, hit: new Set(), w: 16 };
+  return { x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, vx: 0, vy: 0, vz: 0, wx: 0, wy: 0, wd: 0, plant: 0, face: 1, hp: 100, max: 100, lives: 3, state: 'idle', t: 0, st: 0, n: 0, comboT: 0, buf: false, inv: 0, hit: new Set(), w: 16 };
 }
 function setMode(m) { input.releaseTouch(); G.mode = m; G.mt = 0; if (m === 'gameover' || m === 'outro') G.prompted = false; }
 
@@ -151,7 +151,7 @@ function startStage(i, keepPlayer = true) {
   input.releaseTouch();
   const st = STAGES[i]; G.stage = i; G.lane = laneOf(st.bg); G.cam = 0; G.lock = null; G.evIdx = 0; G.ents = []; G.items = []; G.rubble = []; G.proj = []; G.fx = []; G.texts = []; G.boss = null; G.bossSpawned = false; G.goT = 0; G.stageT = 0; G.haz = []; G.queue = []; G.hazQ = []; G.stT = []; G.bossHT = 0; G.idleT = 0; G.idleX = 40;
   G.props = st.props.map(p => ({ x: p.x, y: G.lane.top + 4 + ((p.x * 7) % Math.max(8, G.lane.bot - G.lane.top - 10)), kind: p.kind, hp: 2, flash: 0, loot: p.loot }));
-  if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { rage: 0, x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, hp: G.p.max, inv: 1.5 }); }
+  if (!keepPlayer || !G.p) G.p = newPlayer(); else { Object.assign(G.p, { rage: 0, x: 40, y: (G.lane.top + G.lane.bot) / 2, z: 0, state: 'idle', vx: 0, wx: 0, wy: 0, plant: 0, hp: G.p.max, inv: 1.5 }); }
   checkpoint(); audio.play('stage' + i, st.music); setMode('stageintro');
 }
 function startCutscene(idx) { input.releaseTouch(); G.cs = { idx, panel: 0, t: 0, done: false }; audio.play('cs' + idx, CUTSCENES[idx].music); setMode('cutscene'); }
@@ -210,17 +210,40 @@ function hurtPlayer(dmg, srcX, kd) {
 }
 
 // ---------- player ----------
+const WALK_X = 82, WALK_Y = 52, WALK_ACCEL = WALK_X / 0.09; // top speeds unchanged; 90ms from a standstill to full, 180ms to reverse
+function approach(v, to, max) { const d = to - v; return Math.abs(d) <= max ? to : v + Math.sign(d) * max; }
 function updatePlayer(dt) {
   const p = G.p, ax = input.axis(); p.t += dt; p.st += dt; p.inv = Math.max(0, p.inv - dt);
   p.comboT -= dt; if (p.comboT <= 0 && p.state !== 'atk') p.n = 0; p.rage = Math.max(0, (p.rage || 0) - dt);
   const free = p.state === 'idle' || p.state === 'walk';
   if (free) {
-    const dn = ax.x && ax.y ? 0.8 : 1; // diagonals no longer faster than straight lines (was 97 px/s)
-    p.ramp = (ax.x || ax.y) ? Math.min(1, (p.ramp ?? 0) + dt / 0.07) : 0; // 70 ms ease-in so a step starts with a push, not an instant 82 px/s
-    const mx = ax.x * 82 * dn * (0.35 + 0.65 * p.ramp), my = ax.y * 52 * dn * (0.35 + 0.65 * p.ramp);
-    const py = p.y; p.x += mx * dt; p.y = clamp(p.y + my * dt, G.lane.top, G.lane.bot); p.wd = (p.wd || 0) + Math.hypot(mx * dt, p.y - py);
-    if (ax.x) p.face = ax.x; const was = p.state; p.state = (ax.x || ax.y) ? 'walk' : 'idle'; if (p.state === 'walk' && was !== 'walk') p.wd = 0; // every walk starts on the contact pose, never mid-stride
-  }
+    const dn = ax.x && ax.y ? 0.8 : 1; // diagonals stay at the same top speed as before (0.8 on each axis)
+    let tvx = ax.x * WALK_X * dn, tvy = ax.y * WALK_Y * dn;
+    // releasing the stick finishes the step already underway instead of freezing mid-stride
+    if (!ax.x && !ax.y && Math.abs(p.wx) > 20 && Math.abs(p.wx) >= Math.abs(p.wy)) {
+      const phase = ((p.wd || 0) / walkPx()) % 12;
+      const fwd = c => (c - phase + 12) % 12;
+      const remain = Math.min(fwd(0), fwd(6));
+      if (remain > 0.35 && remain <= 4) tvx = Math.sign(p.wx) * Math.min(Math.abs(p.wx), Math.max(24, remain * walkPx() / 0.1));
+    }
+    p.wx = approach(p.wx || 0, tvx, WALK_ACCEL * dt);
+    p.wy = approach(p.wy || 0, tvy, WALK_ACCEL * dt);
+    if (!tvx && Math.abs(p.wx) < 4) p.wx = 0;
+    if (!tvy && Math.abs(p.wy) < 3) p.wy = 0;
+    const x0 = p.x, y0 = p.y;
+    p.x += p.wx * dt; p.y = clamp(p.y + p.wy * dt, G.lane.top, G.lane.bot);
+    const dist = Math.hypot(p.x - x0, p.y - y0);
+    if (dist > 0.02 || ax.x || ax.y) {
+      if (p.state !== 'walk') p.wd = (p.plant || 0) * walkPx(); // continue from the contact we were standing on
+      p.wd = (p.wd || 0) + dist; p.state = 'walk'; p.plant = 0;
+      if (Math.abs(p.wx) > 12) p.face = p.wx > 0 ? 1 : -1; // flip only once we're actually moving the new way, so the mirror happens at low speed
+    } else {
+      const phase = ((p.wd || 0) / walkPx()) % 12;
+      const d0 = Math.min(phase, 12 - phase), d6 = Math.abs(phase - 6);
+      p.plant = d6 < d0 ? 6 : 0; // contact 0 is the breathing idle; contact 6 holds the other stride
+      p.state = 'idle'; p.wd = p.plant * walkPx();
+    }
+  } else { p.wx = 0; p.wy = 0; }
   const startAtk = () => { p.n = (p.n % 3) + 1; p.state = 'atk'; p.st = 0; p.hit.clear(); p.buf = false; p.comboT = 0.7; audio.sfx('swing'); };
   if (input.take('atk')) {
     if (p.z > 1 && p.state !== 'jatk') { p.state = 'jatk'; p.st = 0; p.hit.clear(); audio.sfx('swing'); }
@@ -474,7 +497,7 @@ function drawWorld() {
   for (const e of G.ents) list.push({ y: e.y, f: () => { shadow(ctx, e.x - cam, e.y, e.boss ? 56 : 36); if (e.tag) drawEliteRing(ctx, e, e.x - cam, G.t); const st = e.state, dur = { melee: e.d.double ? 0.5 : 0.4, lunge: 0.5, shoot: 0.5, slam: 0.6, summon: 0.7 }[e.move] || 0.4;
     drawHuman(ctx, { type: e.type, x: e.x - cam, y: e.y, z: e.z, face: e.face, t: e.t, state: st === 'charge' ? 'run' : st, at: st === 'hurt' ? e.st / 0.28 : e.st / dur, lieT: st === 'dead' ? e.dead + 0.5 : e.st, flash: e.flashT > 0 || (st === 'dead' && Math.floor(e.dead * 20) % 2) }); } });
   const p = G.p; list.push({ y: p.y, f: () => { shadow(ctx, p.x - cam, p.y, 44); if (p.inv > 0 && Math.floor(G.t * 20) % 2 && p.state !== 'special') return; if (p.rage > 0) { ctx.strokeStyle = `rgba(255,80,40,${0.5 + 0.4 * Math.sin(G.t * 14)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x - cam, p.y, 26, 8, 0, 0, 7); ctx.stroke(); }
-    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
+    drawHarambe(ctx, { x: p.x - camP, y: p.y, z: p.z, vz: p.vz, face: p.face, t: p.t, wd: p.wd, plant: p.plant, state: p.state, at: p.st / ({ atk: 0.26, heavy: 0.5, special: 0.6, jatk: 0.3, hurt: 0.3 }[p.state] || 1), lieT: p.st, combo: p.n, flash: p.inv > 1.2 && p.state === 'hurt' }); } });
   list.sort((a, b) => a.y - b.y).forEach(o => o.f());
   for (const n of G.proj) { if (n.lob) shadow(ctx, n.x - cam, n.y, 10); drawProj(ctx, { ...n, x: n.x - cam }, G.t); }
   for (const f of G.fx) { const k = f.t / 0.3, x = f.x - cam; if (f.ring) { ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, f.y, 10 + k * 56, 4 + k * 18, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = `rgba(255,200,60,${1 - k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, f.y, 6 + k * 50, 2 + k * 15, 0, 0, 7); ctx.stroke(); } else if (f.dust) drawDust(ctx, x, f.y, k); else drawSpark(ctx, x, f.y - 32, k, f.big); }

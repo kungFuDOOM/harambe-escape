@@ -38,6 +38,8 @@ test('walk cycle: 12-frame two-step cycle, one shared body pivot and ground line
   const a = JSON.parse(readFileSync(new URL('../assets/atlas.json', import.meta.url))).harambe;
   assert.equal(a.anims.walk.length, 12);
   assert.equal(new Set(a.anims.walk).size, 12);
+  // one source of truth with js/sprites.js WALK_PX (26 device px of stance travel over 6 frames, /3 to logic px)
+  assert.ok(Math.abs(a.walkPx - 26 / 18) < 1e-9, 'walkPx ' + a.walkPx);
   const f = a.anims.walk.map(i => a.frames[i]);
   // feet baseline: the sprite is anchored on the ground line, so each frame's anchor row must lie inside the frame and the cycle never changes scale
   for (const x of f) assert.ok(x.ay > 150 && x.ay <= x.h + 4, 'ay ' + x.ay + ' h ' + x.h);
