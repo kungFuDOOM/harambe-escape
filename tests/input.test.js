@@ -33,3 +33,9 @@ test('stickDirs: slightly off-axis thumb walks straight, real diagonals still wo
   assert.deepEqual(stickDirs(40, 25), { left: false, right: true, up: false, down: true });
   assert.deepEqual(stickDirs(-30, -30), { left: true, right: false, up: true, down: false });
 });
+test('stickDirs hysteresis: a held direction survives a dip inside the engage dead zone', () => {
+  const prev = { left: false, right: true, up: false, down: false };
+  assert.equal(stickDirs(10, 0, 16, 0.5, prev).right, true);
+  assert.equal(stickDirs(6, 0, 16, 0.5, prev).right, false);
+  assert.equal(stickDirs(10, 0, 16, 0.5, null).right, false);
+});
