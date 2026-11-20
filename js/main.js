@@ -14,6 +14,7 @@ import { dropState, sweepHit, CAR_HALF, CAR_DEPTH, lobVel, pickLoot, LOOT, spotU
 import { drawHazMarkers, hazardEntries, drawLobMarkers, drawItem, drawEliteRing } from './hazdraw.js';
 import { makeSave, keepFurthest, writeSave, readSave, clearSave } from './save.js';
 import { stepLoco, LOCO } from './loco.js';
+import { CA_TEXT } from './config.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const SCALE = cv.width / W; // canvas is 3x the 320x180 logic grid; art is baked at that resolution
@@ -494,7 +495,10 @@ function drawTitle() {
   shadow(ctx, 250, 160, 36); drawHuman(ctx, { type: 'keeper_stun', x: 250, y: 160, face: -1, t: G.t, state: 'walk' });
   shadow(ctx, 288, 172, 36); drawHuman(ctx, { type: 'cop_baton', x: 288, y: 172, face: -1, t: G.t + 1, state: 'walk' });
   if (G.menu && G.menu.kind === 'confirm') drawPause(); else if (G.menu) drawMenu(G.menu);
-  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, 175, '#c8d0e0', 7, 'center');
+  // CA line sits just under the last title button; HI drops a few px when CONTINUE makes the menu tall so nothing overlaps
+  const last = G.menu && G.menu.kind === 'title' ? G.menu.items[G.menu.items.length - 1].r : null, caY = last ? last.y + last.h + 10 : 150;
+  drawText(ctx, CA_TEXT, W / 2, caY, '#ffe03a', 7, 'center');
+  drawText(ctx, 'HI ' + String(G.hiscore).padStart(7, '0'), W / 2, Math.max(175, caY + 9), '#c8d0e0', 7, 'center');
 }
 function stageIntro() {
   const st = STAGES[G.stage]; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
